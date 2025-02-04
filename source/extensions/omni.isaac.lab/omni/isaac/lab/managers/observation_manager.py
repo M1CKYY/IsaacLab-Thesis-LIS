@@ -103,6 +103,14 @@ class ObservationManager(ManagerBase):
         # Stores the latest observations.
         self._obs_buffer: dict[str, torch.Tensor | dict[str, torch.Tensor]] | None = None
 
+
+        self._group_obs_term_names: dict[str, list[str]] = dict()
+        self._group_obs_term_dim: dict[str, list[tuple[int, ...]]] = dict()
+        self._group_obs_term_cfgs: dict[str, list[ObservationTermCfg]] = dict()
+        self._group_obs_class_term_cfgs: dict[str, list[ObservationTermCfg]] = dict()
+        self._group_obs_concatenate: dict[str, bool] = dict()
+        self._group_obs_term_history_buffer: dict[str, dict] = dict()
+
     def __str__(self) -> str:
         """Returns: A string representation for the observation manager."""
         msg = f"<ObservationManager> contains {len(self._group_obs_term_names)} groups.\n"

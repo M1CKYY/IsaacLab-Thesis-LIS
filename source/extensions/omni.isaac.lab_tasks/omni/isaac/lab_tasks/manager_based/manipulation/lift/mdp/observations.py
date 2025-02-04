@@ -28,4 +28,7 @@ def object_position_in_robot_root_frame(
     object_pos_b, _ = subtract_frame_transforms(
         robot.data.root_state_w[:, :3], robot.data.root_state_w[:, 3:7], object_pos_w
     )
+    
+    print(env.observation_manager)
+    print(env.observation_manager._group_obs_term_history_buffer)
     return object_pos_b
