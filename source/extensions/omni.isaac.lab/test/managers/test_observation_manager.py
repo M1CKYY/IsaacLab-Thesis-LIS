@@ -175,6 +175,7 @@ class TestObservationManager(unittest.TestCase):
         obs_man_str_split = obs_man_str.split("|")
         term_1_str_index = obs_man_str_split.index(" term_1           ")
         term_1_str_shape = obs_man_str_split[term_1_str_index + 1].strip()
+        print(f"history: {self.obs_man.group_obs_term_history_buffer['policy']['term_1'].buffer}")
         self.assertEqual(term_1_str_shape, "(20,)")
 
     def test_config_equivalence(self):
@@ -377,6 +378,7 @@ class TestObservationManager(unittest.TestCase):
         self.assertEqual((self.env.num_envs, 23), obs_policy.shape)
         # check the observation data
         expected_obs_term_1_data = torch.ones(self.env.num_envs, 4 * HISTORY_LENGTH, device=self.env.device)
+        print(expected_obs_term_1_data)
         expected_obs_term_2_data = lin_vel_w_data(self.env)
         expected_obs_data_t0 = torch.concat((expected_obs_term_1_data, expected_obs_term_2_data), dim=-1)
         print(expected_obs_data_t0, obs_policy)

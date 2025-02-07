@@ -218,14 +218,6 @@ class ObservationManager(ManagerBase):
     
     @property
     def group_obs_term_history_buffer(self) -> dict[str, dict]:
-        """Whether the observation terms are concatenated in each group or not.
-
-        The key is the group name and the value is a boolean specifying whether the observation terms in the group
-        are concatenated into a single tensor. If True, the observations are concatenated along the last dimension.
-
-        The values are set based on the :attr:`~ObservationGroupCfg.concatenate_terms` attribute in the group
-        configuration.
-        """
         return self._group_obs_term_history_buffer
 
 
