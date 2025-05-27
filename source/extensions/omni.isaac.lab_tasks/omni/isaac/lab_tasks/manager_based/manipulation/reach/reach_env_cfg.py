@@ -133,11 +133,11 @@ class RewardsCfg:
     """Reward terms for the MDP."""
 
     # task terms
-    #end_effector_position_tracking = RewTerm(
-    #    func=mdp.position_command_error,
-    #    weight=-0.2,
-    #    params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
-    #)
+    end_effector_position_tracking = RewTerm(
+       func=mdp.position_command_error,
+       weight=-0.2,
+       params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+    )
     end_effector_position_tracking_fine_grained = RewTerm(
         func=mdp.position_command_error_tanh,
         weight=0.1,

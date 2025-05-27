@@ -157,6 +157,42 @@ class CurriculumCfg:
     )
 
 
+@configclass
+class RewardsCfg:
+    """Reward terms for the MDP."""
+
+    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1}, weight=2.0)
+
+    lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.2}, weight=3.0)
+    
+    placing_object = RewTerm(func=mdp.stay_low, params={"minimal_height": 0.2}, weight=5.0)
+    
+    reach_base = RewTerm(func=mdp.ee_base_distance, params={"std": 0.1}, weight=2.0)
+
+
+
+    # object_goal_tracking = RewTerm(
+    #     func=mdp.object_goal_distance,
+    #     params={"std": 0.3, "minimal_height": 0.04, "command_name": "object_pose"},
+    #     weight=16.0,
+    # )
+
+    # object_goal_tracking_fine_grained = RewTerm(
+    #     func=mdp.object_goal_distance,
+    #     params={"std": 0.05, "minimal_height": 0.04, "command_name": "object_pose"},
+    #     weight=5.0,
+    # )
+
+    # action penalty
+    action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
+
+    joint_vel = RewTerm(
+        func=mdp.joint_vel_l2,
+        weight=-1e-4,
+        params={"asset_cfg": SceneEntityCfg("robot")},
+    )
+
+
 ##
 # Environment configuration
 ##
@@ -173,36 +209,6 @@ class LiftEnvCfg(ManagerBasedRLEnvCfg):
     actions: ActionsCfg = ActionsCfg()
     commands: CommandsCfg = CommandsCfg()
     # MDP settings
-
-    @configclass
-    class RewardsCfg:
-        """Reward terms for the MDP."""
-
-        reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1}, weight=1.0)
-
-        lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.04}, weight=15.0)
-
-        object_goal_tracking = RewTerm(
-            func=mdp.object_goal_distance,
-            params={"std": 0.3, "minimal_height": 0.04, "command_name": "object_pose"},
-            weight=16.0,
-        )
-
-        object_goal_tracking_fine_grained = RewTerm(
-            func=mdp.object_goal_distance,
-            params={"std": 0.05, "minimal_height": 0.04, "command_name": "object_pose"},
-            weight=5.0,
-        )
-
-        # action penalty
-        action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
-
-        joint_vel = RewTerm(
-            func=mdp.joint_vel_l2,
-            weight=-1e-4,
-            params={"asset_cfg": SceneEntityCfg("robot")},
-        )
-
     rewards: RewardsCfg = RewardsCfg()
     terminations: TerminationsCfg = TerminationsCfg()
     events: EventCfg = EventCfg()
@@ -222,3 +228,13 @@ class LiftEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
         self.sim.physx.gpu_total_aggregate_pairs_capacity = 16 * 1024
         self.sim.physx.friction_correlation_distance = 0.00625
+
+    def _reset_idx(self, env_ids: Sequence[int] | None):
+        if env_ids is None:
+            env_ids = self.robot._ALL_INDICES
+        super()._reset_idx(env_ids)
+
+        # reset box
+        box_default_state = self._box.data.default_root_state.clone()[env_ids]
+        box_default_state[:, :3] += self.scene.env_origins
+        self._box.write_root_state_to_sim(box_default_state, env_ids=env_ids)

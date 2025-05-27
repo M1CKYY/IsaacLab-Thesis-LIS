@@ -28,7 +28,6 @@ def object_position_in_robot_root_frame(
     object_pos_b, _ = subtract_frame_transforms(
         robot.data.root_state_w[:, :3], robot.data.root_state_w[:, 3:7], object_pos_w
     )
-    print(object_pos_b.dtype)
     return object_pos_b
 
 
@@ -37,23 +36,16 @@ def is_lifted(
     minimal_height: float,
     object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
 ) -> torch.Tensor:
+    """Informational encoding if object has been lifted in an episode."""
     object: RigidObject = env.scene[object_cfg.name]
     vis = 0
 
     try:
-        print(object.data.root_pos_w[:, 2])
         new_lifted_envs = torch.where(object.data.root_pos_w[:, 2] > minimal_height, 1.0, 0.0).unsqueeze(1).float()
         old_lifted_envs = torch.where(env.observation_manager.group_obs_term_history_buffer["policy"]["is_lifted"].buffer[:, 0] == 1.0, 1.0, 0.0).float()
-        print(new_lifted_envs, old_lifted_envs)
         vis = torch.logical_or(new_lifted_envs, old_lifted_envs).float()
-        print(vis.shape)
-        print(vis)
-        count_ones = torch.sum(vis, dim=1).sum()
-        print(count_ones)
     except AttributeError:
         print("No obs manager yet.")
-        count_ones = 0
-        print(count_ones)
         vis = torch.zeros(4096, 1)
     return vis
         

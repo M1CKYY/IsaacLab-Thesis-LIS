@@ -42,7 +42,7 @@ def object_goal_frame_distance(
     env: ManagerBasedRLEnv,
     std: float,
     object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
-    goal_frame_cfg: SceneEntityCfg = SceneEntityCfg("frame"),
+    goal_frame_cfg: SceneEntityCfg = SceneEntityCfg("box"),
 ) -> torch.Tensor:
     """Reward the agent for the distance between the object and the goal pose using tanh-kernel."""
     # extract the used quantities (to enable type-hinting)
@@ -76,7 +76,6 @@ def object_fail(
     env: ManagerBasedRLEnv,
     std: float,
     object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
-    goal_frame_cfg: SceneEntityCfg = SceneEntityCfg("frame"),
 ) -> torch.Tensor:
     """Reward the agent for the distance between the object and the goal pose using tanh-kernel."""
     # extract the used quantities (to enable type-hinting)

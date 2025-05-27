@@ -13,8 +13,8 @@ from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.assets import ISAAC_NUCLEUS_DIR
 import omni.isaac.lab.sim as sim_utils
 
-from omni.isaac.lab_tasks.manager_based.manipulation.push import mdp
-from omni.isaac.lab_tasks.manager_based.manipulation.push.push_env_cfg import PushEnvCfg
+from omni.isaac.lab_tasks.manager_based.manipulation.insert_key import mdp
+from omni.isaac.lab_tasks.manager_based.manipulation.insert_key.insert_key_env_cfg import InsertKeyEnvCfg
 
 ##
 # Pre-defined configs
@@ -23,7 +23,7 @@ from omni.isaac.lab.markers.config import FRAME_MARKER_CFG  # isort: skip
 
 
 @configclass
-class FrankaCubePushEnvCfg(PushEnvCfg):
+class FrankaInsertKeyEnvCfg(InsertKeyEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
@@ -33,6 +33,7 @@ class FrankaCubePushEnvCfg(PushEnvCfg):
         self.actions.arm_action = mdp.JointPositionActionCfg(
             asset_name="robot", joint_names=["panda_joint.*"], scale=0.5, use_default_offset=True
         )
+
         self.actions.gripper_action = mdp.BinaryJointPositionActionCfg(
             asset_name="robot",
             joint_names=["panda_finger.*"],
@@ -42,19 +43,20 @@ class FrankaCubePushEnvCfg(PushEnvCfg):
         )
 
         self.scene.table = RigidObjectCfg(
-            prim_path="{ENV_REGEX_NS}/Table",
+            prim_path="{ENV_REGEX_NS}/table_low",
             spawn=UsdFileCfg(
-                usd_path="/home/michias/Documents/Isaac Custom Environments/box_push/table_low.usd",
-                scale=(0.8, 0.8, 1),
+                usd_path="/home/michias/Documents/Isaac Custom Environments/insert_key/table_low.usd",
+                scale=(0.61808474, 1.4552572, 1),
             ),
         )
 
-        self.scene.cube1 = RigidObjectCfg(
-            prim_path="{ENV_REGEX_NS}/Cube1",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=(-0.27805966079156325, -0.11327031527026465, 0.7176599999999997),),
+        self.scene.key = RigidObjectCfg(
+            prim_path="{ENV_REGEX_NS}/Key",
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=(0.27805966079156325, -0.23327031527026465, 0.7176599999999997),
+            ),
             spawn=UsdFileCfg(
-                usd_path="/home/michias/Documents/Isaac Custom Environments/box_push/Cube1.usd",
-                scale=(0.8, 0.8, 0.8),
+                usd_path="/home/michias/Documents/Isaac Custom Environments/insert_key/Key.usd",
                 rigid_props=RigidBodyPropertiesCfg(
                     solver_position_iteration_count=16,
                     solver_velocity_iteration_count=1,
@@ -66,35 +68,14 @@ class FrankaCubePushEnvCfg(PushEnvCfg):
             ),
         )
 
-        # self.scene.cube2 = RigidObjectCfg(
-        #     prim_path="{ENV_REGEX_NS}/Cube2",
-        #     init_state=RigidObjectCfg.InitialStateCfg(pos=(-0.023207811638712883, -0.2540944678810327, 0.7176562547683716)),
-        #     spawn=UsdFileCfg(
-        #         usd_path="/home/michias/Documents/Isaac Custom Environments/box_push/Cube2.usd",
-        #         scale=(0.8, 0.8, 0.8),
-        #         rigid_props=RigidBodyPropertiesCfg(
-        #             solver_position_iteration_count=16,
-        #             solver_velocity_iteration_count=1,
-        #             max_angular_velocity=1000.0,
-        #             max_linear_velocity=1000.0,
-        #             max_depenetration_velocity=5.0,
-        #             disable_gravity=False,
-        #         ),
-        #     ),
-        # )
 
-        # Listens to the required transforms
-        marker_cfg = FRAME_MARKER_CFG.copy()
-        marker_cfg.markers["frame"].scale = (0.1, 0.1, 0.1)
-        marker_cfg.prim_path = "/Visuals/FrameTransformer"
-
-        self.scene.frame = RigidObjectCfg(
-            prim_path="{ENV_REGEX_NS}/Frame",
+        self.scene.box = RigidObjectCfg(
+            prim_path="{ENV_REGEX_NS}/Box",
             init_state=RigidObjectCfg.InitialStateCfg(
-                pos=(0.1568639005333959, -0.1690530715030712, 0.7176599999999997),),
+                pos=(-0.2805966079156325, -0.17031527026465, 0.7176599999999997),
+            ),
             spawn=UsdFileCfg(
-                usd_path="/home/michias/Documents/Isaac Custom Environments/box_push/frame_prim_rigid.usd",
-                scale=(0.1, 0.1, 0.1),
+                usd_path="/home/michias/Documents/Isaac Custom Environments/insert_key/Box.usd",
                 rigid_props=RigidBodyPropertiesCfg(
                     solver_position_iteration_count=16,
                     solver_velocity_iteration_count=1,
