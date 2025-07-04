@@ -3,17 +3,16 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Script to train RL agent with Stable Baselines3.
-
-Since Stable-Baselines3 does not support buffers living on GPU directly,
-we recommend using smaller number of environments. Otherwise,
-there will be significant overhead in GPU->CPU transfer.
+"""
+Flexible script to train RL agent with Stable-Baselines3.
+Supports both PPO and SAC by choosing the algorithm via the command line.
 """
 
 """Launch Isaac Sim Simulator first."""
 
 import argparse
 import sys
+import torch.nn as nn  # Required for evaluating policy_kwargs
 
 from omni.isaac.lab.app import AppLauncher
 
@@ -26,11 +25,14 @@ parser.add_argument("--num_envs", type=int, default=None, help="Number of enviro
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
+# MODIFIED: Add an argument to choose the algorithm
+parser.add_argument("--algo", type=str, default="ppo", choices=["ppo", "sac"], help="RL Algorithm to use.")
+
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
 # parse the arguments
 args_cli, hydra_args = parser.parse_known_args()
-# always enable cameras to record video
+
 if args_cli.video:
     args_cli.enable_cameras = True
 
@@ -44,109 +46,79 @@ simulation_app = app_launcher.app
 """Rest everything follows."""
 
 import gymnasium as gym
-import numpy as np
 import os
-import random
 from datetime import datetime
 
-from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import CheckpointCallback
-from stable_baselines3.common.logger import configure
-from stable_baselines3.common.vec_env import VecNormalize
+# MODIFIED: Import both PPO and SAC
+from stable_baselines3 import PPO, SAC
 
-from omni.isaac.lab.envs import (
-    DirectMARLEnv,
-    DirectMARLEnvCfg,
-    DirectRLEnvCfg,
-    ManagerBasedRLEnvCfg,
-    multi_agent_to_single_agent,
-)
+from omni.isaac.lab.envs import ManagerBasedRLEnvCfg
 from omni.isaac.lab.utils.dict import print_dict
 from omni.isaac.lab.utils.io import dump_pickle, dump_yaml
 
 import omni.isaac.lab_tasks  # noqa: F401
 from omni.isaac.lab_tasks.utils.hydra import hydra_task_config
-from omni.isaac.lab_tasks.utils.wrappers.sb3 import Sb3VecEnvWrapper, process_sb3_cfg
+from omni.isaac.lab_tasks.utils.wrappers.sb3 import Sb3VecEnvWrapper
+
+# MODIFIED: Logic to find the correct agent config file based on the chosen algorithm
+agent_cfg_entry_point = f"sb3_{args_cli.algo}_cfg_entry_point"
 
 
-@hydra_task_config(args_cli.task, "sb3_cfg_entry_point")
-def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: dict):
-    """Train with stable-baselines agent."""
-    # randomly sample a seed if seed = -1
-    if args_cli.seed == -1:
-        args_cli.seed = random.randint(0, 10000)
-
+@hydra_task_config(args_cli.task, agent_cfg_entry_point)
+def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: dict):
+    """Train with Stable-Baselines3 agent."""
     # override configurations with non-hydra CLI arguments
-    env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
-    agent_cfg["seed"] = args_cli.seed if args_cli.seed is not None else agent_cfg["seed"]
-    # max iterations for training
-    if args_cli.max_iterations is not None:
-        agent_cfg["n_timesteps"] = args_cli.max_iterations * agent_cfg["n_steps"] * env_cfg.scene.num_envs
-
-    # set the environment seed
-    # note: certain randomizations occur in the environment initialization so we set the seed here
-    env_cfg.seed = agent_cfg["seed"]
-    env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
-
-    # directory for logging into
-    log_dir = os.path.join("logs", "sb3", args_cli.task, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-    # dump the configuration into log-directory
-    dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
-    dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
-    dump_pickle(os.path.join(log_dir, "params", "env.pkl"), env_cfg)
-    dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
-
-    # post-process agent configuration
-    agent_cfg = process_sb3_cfg(agent_cfg)
-    # read configurations about the agent-training
-    policy_arch = agent_cfg.pop("policy")
-    n_timesteps = agent_cfg.pop("n_timesteps")
+    if args_cli.num_envs is not None:
+        env_cfg.scene.num_envs = args_cli.num_envs
+    if args_cli.seed is not None:
+        env_cfg.seed = args_cli.seed
 
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
-
-    # convert to single-agent instance if required by the RL algorithm
-    if isinstance(env.unwrapped, DirectMARLEnv):
-        env = multi_agent_to_single_agent(env)
-
-    # wrap for video recording
-    if args_cli.video:
-        video_kwargs = {
-            "video_folder": os.path.join(log_dir, "videos", "train"),
-            "step_trigger": lambda step: step % args_cli.video_interval == 0,
-            "video_length": args_cli.video_length,
-            "disable_logger": True,
-        }
-        print("[INFO] Recording videos during training.")
-        print_dict(video_kwargs, nesting=4)
-        env = gym.wrappers.RecordVideo(env, **video_kwargs)
-
-    # wrap around environment for stable baselines
+    # wrap for stable-baselines
     env = Sb3VecEnvWrapper(env)
 
-    if "normalize_input" in agent_cfg:
-        env = VecNormalize(
-            env,
-            training=True,
-            norm_obs="normalize_input" in agent_cfg and agent_cfg.pop("normalize_input"),
-            norm_reward="normalize_value" in agent_cfg and agent_cfg.pop("normalize_value"),
-            clip_obs="clip_obs" in agent_cfg and agent_cfg.pop("clip_obs"),
-            gamma=agent_cfg["gamma"],
-            clip_reward=np.inf,
-        )
+    # -- MODIFIED: Separate training and agent hyperparameters ---
 
-    # create agent from stable baselines
-    agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
-    # configure the logger
-    new_logger = configure(log_dir, ["stdout", "tensorboard"])
-    agent.set_logger(new_logger)
+    # Pop the total timesteps from the agent config since it's a trainer argument, not an agent argument
+    # Default to a large number if not specified
+    total_timesteps = agent_cfg.pop("n_timesteps", 1_000_000)
 
-    # callbacks for agent
-    checkpoint_callback = CheckpointCallback(save_freq=1000, save_path=log_dir, name_prefix="model", verbose=2)
-    # train the agent
-    agent.learn(total_timesteps=n_timesteps, callback=checkpoint_callback)
-    # save the final model
-    agent.save(os.path.join(log_dir, "model"))
+    # If max_iterations is provided for PPO, it overrides the total_timesteps from the YAML
+    if args_cli.max_iterations and "n_steps" in agent_cfg:
+        total_timesteps = args_cli.max_iterations * agent_cfg["n_steps"] * env.num_envs
+
+    # Handle policy_kwargs dictionary evaluation
+    if "policy_kwargs" in agent_cfg and isinstance(agent_cfg["policy_kwargs"], str):
+        agent_cfg["policy_kwargs"] = eval(agent_cfg["policy_kwargs"])
+
+    # --- Create Agent ---
+
+    # Now, agent_cfg only contains parameters for the agent's constructor
+    if args_cli.algo == "ppo":
+        agent = PPO(env=env, verbose=1, **agent_cfg)
+        print("[INFO] Created PPO agent.")
+    elif args_cli.algo == "sac":
+        agent = SAC(env=env, verbose=1, **agent_cfg)
+        print("[INFO] Created SAC agent.")
+    else:
+        raise ValueError(f"Unknown algorithm: {args_cli.algo}")
+
+    # --- Train Agent ---
+
+    # Create a directory for logging
+    log_root_path = os.path.join("logs", "sb3", f"{args_cli.task}_{args_cli.algo}")
+    log_dir = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_path = os.path.join(log_root_path, log_dir)
+    os.makedirs(log_path, exist_ok=True)
+
+    # Train the agent using the total_timesteps variable
+    agent.learn(total_timesteps=total_timesteps)
+
+    # Save the final model
+    print(f"[INFO]: Saving model to: {log_path}")
+    agent.save(os.path.join(log_path, "model"))
+    dump_yaml(os.path.join(log_path, "params.yaml"), agent_cfg)
 
     # close the simulator
     env.close()

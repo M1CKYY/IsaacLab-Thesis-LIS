@@ -39,17 +39,11 @@ def is_lifted(
     """Informational encoding if object has been lifted in an episode."""
     object: RigidObject = env.scene[object_cfg.name]
     vis = 0
-
     try:
         new_lifted_envs = torch.where(object.data.root_pos_w[:, 2] > minimal_height, 1.0, 0.0).unsqueeze(1).float()
         old_lifted_envs = torch.where(env.observation_manager.group_obs_term_history_buffer["policy"]["is_lifted"].buffer[:, 0] == 1.0, 1.0, 0.0).float()
         vis = torch.logical_or(new_lifted_envs, old_lifted_envs).float()
     except AttributeError:
         print("No obs manager yet.")
-        vis = torch.zeros(4096, 1)
+        vis = torch.zeros(2048, 1)
     return vis
-        
-        
-
-
-    

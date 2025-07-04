@@ -26,8 +26,6 @@ def object_ee_distance(
     """Reward the agent for reaching the object using tanh-kernel."""
     # extract the used quantities (to enable type-hinting)
     object: RigidObject = env.scene[object_cfg.name]
-
-
     ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
     # Target object position: (num_envs, 3)
     cube_pos_w = object.data.root_pos_w
@@ -36,7 +34,7 @@ def object_ee_distance(
     # Distance of the end-effector to the object: (num_envs,)
     object_ee_distance = torch.norm(cube_pos_w - ee_w, dim=1)
 
-    return -object_ee_distance
+    return 1 - torch.tanh(object_ee_distance / std)
 
 def object_goal_frame_distance(
     env: ManagerBasedRLEnv,

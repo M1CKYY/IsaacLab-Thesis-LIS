@@ -13,11 +13,11 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 
 
 @configclass
-class FrankaPushPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+class LiftCubePPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 1000
+    max_iterations = 1500
     save_interval = 50
-    experiment_name = "franka_reach"
+    experiment_name = "franka_lift"
     run_name = ""
     resume = False
     empirical_normalization = False

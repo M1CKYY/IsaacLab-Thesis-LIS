@@ -99,12 +99,14 @@ class ObservationsCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
+
         joint_pos = ObsTerm(func=mdp.joint_pos_rel)
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
-        object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame, history_length=2)
+        object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
         target_object_position = ObsTerm(func=mdp.generated_commands, params={"command_name": "object_pose"})
         actions = ObsTerm(func=mdp.last_action)
-        is_lifted = ObsTerm(func=mdp.is_lifted, history_length=2, params={"minimal_height" : 0.2})
+        is_lifted = ObsTerm(func=mdp.is_lifted, history_length=1, params={"minimal_height": 0.1})
+
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -161,27 +163,44 @@ class CurriculumCfg:
 class RewardsCfg:
     """Reward terms for the MDP."""
 
-    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1}, weight=2.0)
+    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.3}, weight=5.0)
 
-    lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.2}, weight=3.0)
-    
-    placing_object = RewTerm(func=mdp.stay_low, params={"minimal_height": 0.2}, weight=5.0)
-    
-    reach_base = RewTerm(func=mdp.ee_base_distance, params={"std": 0.1}, weight=2.0)
+    object_lifted = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.04}, weight=15.0)
+    close_gripper_near_object = RewTerm(func=mdp.close_gripper_near_object, params={"gripper_action_name": "gripper_action", "std": 0.3}, weight=1)
+    #penalize_letting_go_of_lifted_object = RewTerm(func=mdp.penalize_letting_go_of_lifted_object, params={"gripper_action_name": "gripper_action"}, weight=20.0)
+
+    object_z_lin_vel = RewTerm(func=mdp.scaled_lin_vel, params={"asset_cfg": SceneEntityCfg("object"), "std": 1}, weight=5.0)
+    gripping = RewTerm(
+        func=mdp.fingers_to_object_distance,
+        weight=3.0,
+        params={"alpha": 200}
+    )
+
+    object_goal_tracking = RewTerm(
+        func=mdp.object_goal_distance,
+        params={"std": 0.3, "minimal_height": 0.04, "command_name": "object_pose"},
+        weight=40.0,
+    )
+
+    object_goal_tracking_fine_grained = RewTerm(
+        func=mdp.object_goal_distance,
+        params={"std": 0.15, "minimal_height": 0.04, "command_name": "object_pose"},
+        weight=40.0,
+    )
+    #reaching_goal = RewTerm(func=mdp.object_distance_to_goal_reward, params={"command_name": "object_pose", "distance_std": 2.0}, weight=3.0)
+
+    #velocity_goal = RewTerm(func=mdp.object_velocity_towards_goal_reward, params={"command_name": "object_pose"}, weight=3.0)
+
+    #encourage = RewTerm(func=mdp.encourage_lift_sequence, params={"ee_body_name": "panda_hand"}, weight=5.0)
+
+    #placing_object = RewTerm(func=mdp.stay_low, params={"minimal_height": 0.2}, weight=5.0)
+
+    #reach_base = RewTerm(func=mdp.ee_base_distance, params={"std": 0.1}, weight=2.0)
 
 
+    #ee_object_z_axis_alignment = RewTerm(func=mdp.ee_object_z_axis_alignment, weight=3.0)
 
-    # object_goal_tracking = RewTerm(
-    #     func=mdp.object_goal_distance,
-    #     params={"std": 0.3, "minimal_height": 0.04, "command_name": "object_pose"},
-    #     weight=16.0,
-    # )
 
-    # object_goal_tracking_fine_grained = RewTerm(
-    #     func=mdp.object_goal_distance,
-    #     params={"std": 0.05, "minimal_height": 0.04, "command_name": "object_pose"},
-    #     weight=5.0,
-    # )
 
     # action penalty
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
@@ -203,7 +222,9 @@ class LiftEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the lifting environment."""
 
     # Scene settings
-    scene: ObjectTableSceneCfg = ObjectTableSceneCfg(num_envs=4096, env_spacing=2.5)
+    scene: ObjectTableSceneCfg = ObjectTableSceneCfg(num_envs=2048, env_spacing=2.5)
+    scene.num_envs = 2048
+
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
@@ -228,13 +249,3 @@ class LiftEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
         self.sim.physx.gpu_total_aggregate_pairs_capacity = 16 * 1024
         self.sim.physx.friction_correlation_distance = 0.00625
-
-    def _reset_idx(self, env_ids: Sequence[int] | None):
-        if env_ids is None:
-            env_ids = self.robot._ALL_INDICES
-        super()._reset_idx(env_ids)
-
-        # reset box
-        box_default_state = self._box.data.default_root_state.clone()[env_ids]
-        box_default_state[:, :3] += self.scene.env_origins
-        self._box.write_root_state_to_sim(box_default_state, env_ids=env_ids)

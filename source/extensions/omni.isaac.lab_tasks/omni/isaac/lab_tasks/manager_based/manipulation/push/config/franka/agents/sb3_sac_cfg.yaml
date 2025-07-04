@@ -1,0 +1,46 @@
+# SAC Hyperparameters for Stable Baselines3
+
+# Total number of training steps
+n_timesteps: !!float 1e7
+
+# The policy model to use (MlpPolicy for standard continuous actions)
+policy: 'MlpPolicy'
+seed: 42
+
+
+# SAC-specific hyperparameters
+# The size of the replay buffer
+buffer_size: 1000000
+# The number of steps to collect before starting to learn
+learning_starts: 15000
+# The size of the minibatch for each gradient update
+batch_size: 256
+# The soft update coefficient (Polyak update) for the target networks
+tau: 0.005
+# The discount factor
+gamma: 0.99
+# How often to update the model (1 step = 1 interaction with the environment)
+train_freq: 1
+# How many gradient steps to perform after each train_freq
+gradient_steps: 1
+# Learning rate for the Adam optimizer
+learning_rate: !!float 3e-4
+# Whether to automatically learn the entropy coefficient (temperature)
+ent_coef: 'auto'
+# The target entropy, 'auto' sets it to -dim(action_space)
+target_entropy: 'auto'
+# Whether to use Generalized State-Dependent Exploration (gSDE)
+use_sde: False
+
+# Network architecture for the actor and critic
+# For SAC, you define separate networks for the policy (pi) and Q-function (qf)
+policy_kwargs: "dict(
+                  activation_fn=nn.ELU,
+                  net_arch=dict(pi=[256, 256], qf=[256, 256])
+                )"
+
+# Normalization settings (optional, but often recommended)
+# To use these, you would typically wrap your environment in a VecNormalize wrapper
+# normalize_input: True
+# normalize_value: True
+# clip_obs: 10.0

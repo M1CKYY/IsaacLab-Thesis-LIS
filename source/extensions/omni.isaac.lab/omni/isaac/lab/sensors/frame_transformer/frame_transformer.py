@@ -105,7 +105,6 @@ class FrameTransformer(SensorBase):
 
     def _initialize_impl(self):
         super()._initialize_impl()
-
         # resolve source frame offset
         source_frame_offset_pos = torch.tensor(self.cfg.source_frame_offset.pos, device=self.device)
         source_frame_offset_quat = torch.tensor(self.cfg.source_frame_offset.rot, device=self.device)

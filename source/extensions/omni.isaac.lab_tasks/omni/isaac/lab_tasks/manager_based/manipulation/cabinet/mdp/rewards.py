@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 def approach_ee_handle(env: ManagerBasedRLEnv, threshold: float) -> torch.Tensor:
-    r"""Reward the robot for reaching the drawer handle using inverse-square law.
+    """Reward the robot for reaching the drawer handle using inverse-square law.
 
     It uses a piecewise function to reward the robot for reaching the handle.
 
