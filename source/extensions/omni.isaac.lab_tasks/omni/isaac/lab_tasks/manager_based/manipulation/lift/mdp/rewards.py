@@ -36,16 +36,26 @@ def close_gripper_near_object(
 ) -> torch.Tensor:
     """Penalizes the agent for closing the gripper when it is far from the object."""
     gripper_action = env.action_manager.action[:, -1]
-    is_closing_action = (gripper_action <= 0).float().squeeze(-1)
+    is_closing_action = (gripper_action <= 0).bool().squeeze(-1)
 
     ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
     object_asset: RigidObject = env.scene[object_cfg.name]
     hand_pos_w = ee_frame.data.target_pos_w[:, 0, :]
     object_pos_w = object_asset.data.root_pos_w
     distance = torch.norm(hand_pos_w - object_pos_w, dim=1)
-    reward_or_penalty = 2.0 * is_closing_action - 1.0
+    # 3. Implement the desired logic using torch.where
+    # First, define the reward signal for when the agent is CLOSING
+    # It gets +1 if near the object, otherwise 0.
+    reward_when_closing = torch.where(distance < minimal_height, 1.0, 0.0)
 
-    return reward_or_penalty * (distance < minimal_height).float()
+    # The reward for OPENING the gripper is always -1.
+    reward_when_opening = 0.1
+
+    # Finally, use the `is_closing_action` boolean tensor as a switch:
+    # If `is_closing_action` is True, it returns `reward_when_closing`.
+    # If `is_closing_action` is False, it returns `reward_when_opening`.
+    return torch.where(is_closing_action, reward_when_closing*5, reward_when_opening)
+
 
 def penalize_letting_go_of_lifted_object(
     env: ManagerBasedRLEnv,
@@ -118,9 +128,30 @@ def fingers_to_object_distance(
 
 
 
-def scaled_lin_vel(env: ManagerBasedRLEnv, std: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("object")) -> torch.Tensor:
+def scaled_lin_vel(env: ManagerBasedRLEnv, std: float, std_2: float,  command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("object")) -> torch.Tensor:
     asset: RigidObject = env.scene[asset_cfg.name]
-    return torch.tanh(torch.square(asset.data.root_lin_vel_b[:, 2]) / std)
+
+    def object_goal_distance(
+            env: ManagerBasedRLEnv,
+            std = std_2,
+            cmd = command_name,
+            robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+            object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+    ) -> torch.Tensor:
+        """Reward the agent for tracking the goal pose using tanh-kernel."""
+        # extract the used quantities (to enable type-hinting)
+        robot: RigidObject = env.scene[robot_cfg.name]
+        object: RigidObject = env.scene[object_cfg.name]
+        command = env.command_manager.get_command(cmd)
+        # compute the desired position in the world frame
+        des_pos_b = command[:, :3]
+        des_pos_w, _ = combine_frame_transforms(robot.data.root_pos_w, robot.data.root_quat_w, des_pos_b)
+        # distance of the end-effector to the object: (num_envs,)
+        distance = torch.norm(des_pos_w - object.data.root_pos_w, dim=1)
+        # rewarded if the object is lifted above the threshold
+        return torch.tanh(distance / std)
+
+    return torch.tanh((torch.square(asset.data.root_lin_vel_b[:, 2]) / std) * object_goal_distance(env))
 
 def object_ee_distance(
     env: ManagerBasedRLEnv,

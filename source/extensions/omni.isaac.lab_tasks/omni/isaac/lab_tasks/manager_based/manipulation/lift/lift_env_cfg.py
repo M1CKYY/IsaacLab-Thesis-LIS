@@ -103,7 +103,8 @@ class ObservationsCfg:
         #joint_pos = ObsTerm(func=mdp.joint_pos_rel)
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
         object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
-        distance = ObsTerm(func=mdp.object_ee_distance)
+        distance = ObsTerm(func=mdp.object_ee_dist)
+        goal_distance = ObsTerm(func=mdp.object_goal_dist, params={"command_name": "object_pose"})
         #target_object_position = ObsTerm(func=mdp.generated_commands, params={"command_name": "object_pose"})
         #actions = ObsTerm(func=mdp.last_action)
         #is_lifted = ObsTerm(func=mdp.is_lifted, history_length=1, params={"minimal_height": 0.1})
@@ -166,11 +167,11 @@ class RewardsCfg:
 
     reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.3}, weight=5.0)
 
-    object_lifted = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.04}, weight=15.0)
-    close_gripper_near_object = RewTerm(func=mdp.close_gripper_near_object, params={"minimal_height": 0.018, "gripper_action_name": "gripper_action", "std": 0.3}, weight=3)
+    object_lifted = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.04}, weight=5.0)
+    close_gripper_near_object = RewTerm(func=mdp.close_gripper_near_object, params={"minimal_height": 0.019, "gripper_action_name": "gripper_action", "std": 0.3}, weight=3)
     #penalize_letting_go_of_lifted_object = RewTerm(func=mdp.penalize_letting_go_of_lifted_object, params={"gripper_action_name": "gripper_action"}, weight=20.0)
 
-    object_z_lin_vel = RewTerm(func=mdp.scaled_lin_vel, params={"asset_cfg": SceneEntityCfg("object"), "std": 1}, weight=5.0)
+    object_z_lin_vel = RewTerm(func=mdp.scaled_lin_vel, params={"asset_cfg": SceneEntityCfg("object"), "command_name": "object_pose", "std": 0.3, "std_2": 0.1}, weight=1.0)
     gripping = RewTerm(
         func=mdp.fingers_to_object_distance,
         weight=1.0,
@@ -180,12 +181,17 @@ class RewardsCfg:
     object_goal_tracking = RewTerm(
         func=mdp.object_goal_distance,
         params={"std": 0.3, "minimal_height": 0.04, "command_name": "object_pose"},
-        weight=10.0,
+        weight=20.0,
     )
 
     object_goal_tracking_fine_grained = RewTerm(
         func=mdp.object_goal_distance,
-        params={"std": 0.5, "minimal_height": 0.04, "command_name": "object_pose"},
+        params={"std": 0.2, "minimal_height": 0.04, "command_name": "object_pose"},
+        weight=40.0,
+    )
+    object_goal_tracking_fine_grained_2 = RewTerm(
+        func=mdp.object_goal_distance,
+        params={"std": 0.1, "minimal_height": 0.04, "command_name": "object_pose"},
         weight=50.0,
     )
     #reaching_goal = RewTerm(func=mdp.object_distance_to_goal_reward, params={"command_name": "object_pose", "distance_std": 2.0}, weight=3.0)
