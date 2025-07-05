@@ -100,13 +100,13 @@ class ObservationsCfg:
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
 
-        #joint_pos = ObsTerm(func=mdp.joint_pos_rel)
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel)
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
         object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
-        distance = ObsTerm(func=mdp.object_ee_dist)
-        goal_distance = ObsTerm(func=mdp.object_goal_dist, params={"command_name": "object_pose"})
-        #target_object_position = ObsTerm(func=mdp.generated_commands, params={"command_name": "object_pose"})
-        #actions = ObsTerm(func=mdp.last_action)
+        #distance = ObsTerm(func=mdp.object_ee_dist)
+        #goal_distance = ObsTerm(func=mdp.object_goal_dist, params={"command_name": "object_pose"})
+        target_object_position = ObsTerm(func=mdp.generated_commands, params={"command_name": "object_pose"})
+        actions = ObsTerm(func=mdp.last_action)
         #is_lifted = ObsTerm(func=mdp.is_lifted, history_length=1, params={"minimal_height": 0.1})
 
 
@@ -229,8 +229,8 @@ class LiftEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the lifting environment."""
 
     # Scene settings
-    scene: ObjectTableSceneCfg = ObjectTableSceneCfg(num_envs=2048, env_spacing=2.5)
-    scene.num_envs = 2048
+    scene: ObjectTableSceneCfg = ObjectTableSceneCfg(num_envs=65536, env_spacing=2.5)
+    scene.num_envs = 65536
 
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()

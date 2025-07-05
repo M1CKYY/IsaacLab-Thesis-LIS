@@ -82,5 +82,5 @@ def is_lifted(
         vis = torch.logical_or(new_lifted_envs, old_lifted_envs).float()
     except AttributeError:
         print("No obs manager yet.")
-        vis = torch.zeros(1024, 1)
+        vis = torch.zeros(env.scene.num_envs, 1)
     return vis

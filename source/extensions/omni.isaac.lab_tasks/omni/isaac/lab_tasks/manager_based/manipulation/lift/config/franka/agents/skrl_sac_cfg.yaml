@@ -30,7 +30,7 @@ models:
     network:
       - name: net
         input: STATES
-        layers: [256, 256]
+        layers: [64, 64]
         activations: relu
     output: ACTIONS
 
@@ -42,7 +42,7 @@ models:
     network:
       - name: net
         input: [STATES, ACTIONS]
-        layers: [256, 256]
+        layers: [64, 64]
         activations: relu
     output: ONE
 
@@ -52,7 +52,7 @@ models:
     network:
       - name: net
         input: [STATES, ACTIONS]
-        layers: [256, 256]
+        layers: [64, 64]
         activations: relu
     output: ONE
 

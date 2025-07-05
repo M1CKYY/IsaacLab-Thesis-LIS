@@ -10,11 +10,11 @@ seed: 42
 
 # SAC-specific hyperparameters
 # The size of the replay buffer
-buffer_size: 100000
+buffer_size: 1000000
 # The number of steps to collect before starting to learn
 learning_starts: 15000
 # The size of the minibatch for each gradient update
-batch_size: 1024
+batch_size: 256
 # The soft update coefficient (Polyak update) for the target networks
 tau: 0.005
 # The discount factor
