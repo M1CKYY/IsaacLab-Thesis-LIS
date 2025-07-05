@@ -10,11 +10,11 @@ seed: 42
 
 # SAC-specific hyperparameters
 # The size of the replay buffer
-buffer_size: 1000000
+buffer_size: 100000
 # The number of steps to collect before starting to learn
-learning_starts: 5000
+learning_starts: 15000
 # The size of the minibatch for each gradient update
-batch_size: 256
+batch_size: 1024
 # The soft update coefficient (Polyak update) for the target networks
 tau: 0.005
 # The discount factor
@@ -24,9 +24,9 @@ train_freq: 1
 # How many gradient steps to perform after each train_freq
 gradient_steps: 1
 # Learning rate for the Adam optimizer
-learning_rate: !!float 3e-4
+learning_rate: 0.001
 # Whether to automatically learn the entropy coefficient (temperature)
-ent_coef: 0.2
+ent_coef: 'auto'
 # The target entropy, 'auto' sets it to -dim(action_space)
 target_entropy: 'auto'
 # Whether to use Generalized State-Dependent Exploration (gSDE)
@@ -36,7 +36,7 @@ use_sde: False
 # For SAC, you define separate networks for the policy (pi) and Q-function (qf)
 policy_kwargs: "dict(
                   activation_fn=nn.ELU,
-                  net_arch=dict(pi=[256, 128, 64], qf=[256, 128, 64])
+                  net_arch=dict(pi=[64, 64], qf=[64, 64])
                 )"
 
 # Normalization settings (optional, but often recommended)

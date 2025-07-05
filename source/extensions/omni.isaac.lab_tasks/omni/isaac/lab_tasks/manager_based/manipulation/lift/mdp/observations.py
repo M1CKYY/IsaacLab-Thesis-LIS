@@ -30,6 +30,23 @@ def object_position_in_robot_root_frame(
     )
     return object_pos_b
 
+def object_ee_distance(
+    env: ManagerBasedRLEnv,
+    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+    ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"),
+) -> torch.Tensor:
+    """Reward the agent for reaching the object using tanh-kernel."""
+    # extract the used quantities (to enable type-hinting)
+    object: RigidObject = env.scene[object_cfg.name]
+    ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
+    # Target object position: (num_envs, 3)
+    cube_pos_w = object.data.root_pos_w
+    # End-effector position: (num_envs, 3)
+    ee_w = ee_frame.data.target_pos_w[..., 0, :]
+    # Distance of the end-effector to the object: (num_envs,)
+    object_ee_distance = torch.norm(cube_pos_w - ee_w, dim=1)
+    return object_ee_distance
+
 
 def is_lifted(
     env: ManagerBasedRLEnv,
@@ -45,5 +62,5 @@ def is_lifted(
         vis = torch.logical_or(new_lifted_envs, old_lifted_envs).float()
     except AttributeError:
         print("No obs manager yet.")
-        vis = torch.zeros(2048, 1)
+        vis = torch.zeros(1024, 1)
     return vis

@@ -30,27 +30,22 @@ def close_gripper_near_object(
     env: ManagerBasedRLEnv,
     gripper_action_name: str,
     std: float,
+    minimal_height: float,
     object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
     ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"),
 ) -> torch.Tensor:
     """Penalizes the agent for closing the gripper when it is far from the object."""
-    # 1. Determine if the gripper action is "close"
-    # 2. Use the indices to slice the action tensor.
     gripper_action = env.action_manager.action[:, -1]
-    # Squeeze the tensor to ensure it is 1D: [num_envs, 1] -> [num_envs]
-    is_closing_action = 1.0-(gripper_action < 0).float().squeeze(-1)
+    is_closing_action = (gripper_action <= 0).float().squeeze(-1)
 
-    # 2. Calculate the distance between the end-effector and the object
     ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
     object_asset: RigidObject = env.scene[object_cfg.name]
     hand_pos_w = ee_frame.data.target_pos_w[:, 0, :]
     object_pos_w = object_asset.data.root_pos_w
     distance = torch.norm(hand_pos_w - object_pos_w, dim=1)
+    reward_or_penalty = 2.0 * is_closing_action - 1.0
 
-    # 3. Calculate the penalty factor
-    penalty_factor = torch.tanh(distance / std)
-
-    return torch.where(distance < 0.015, (1.0 - is_closing_action)*3, is_closing_action)
+    return reward_or_penalty * (distance < minimal_height).float()
 
 def penalize_letting_go_of_lifted_object(
     env: ManagerBasedRLEnv,
@@ -71,6 +66,110 @@ def penalize_letting_go_of_lifted_object(
 
 
 def fingers_to_object_distance(
+    env: ManagerBasedRLEnv,
+    alpha: float,
+    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+    ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"),
+) -> torch.Tensor:
+    """
+    Reward the agent for moving its end-effector fingers very close to the object.
+
+    This version uses a squared exponential (Gaussian) kernel, which provides a much
+    stronger reward signal when the fingers are extremely close to the object,
+    and the reward falls off very quickly with distance.
+
+    Args:
+        env: The environment instance.
+        alpha: A scaling factor for the exponential kernel. A larger value creates a
+               steeper, more focused reward.
+        object_cfg: The configuration for the target object. Defaults to "object".
+        ee_frame_cfg: The configuration for the end-effector FrameTransformer.
+                      Defaults to "ee_frame".
+
+    Returns:
+        A tensor containing the calculated reward for each environment.
+    """
+    # Extract the used quantities (to enable type-hinting)
+    object_asset: RigidObject = env.scene[object_cfg.name]
+    ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
+
+    # Object position in the world frame: (num_envs, 3)
+    object_pos_w = object_asset.data.root_pos_w
+    # End-effector frame positions in the world frame
+    ee_targets_w = ee_frame.data.target_pos_w
+    num_targets = ee_targets_w.shape[1]
+
+    # Check the number of tracked targets to avoid crashing
+    if num_targets == 0:
+        return torch.zeros(env.num_envs, device=env.device)
+    elif num_targets == 1:
+        hand_pos_w = ee_targets_w[:, 0, :]
+        total_distance = torch.norm(object_pos_w - hand_pos_w, dim=1)
+    else:
+        left_finger_pos_w = ee_targets_w[:, 0, :]
+        right_finger_pos_w = ee_targets_w[:, 1, :]
+        dist_left = torch.norm(object_pos_w - left_finger_pos_w, dim=1)
+        dist_right = torch.norm(object_pos_w - right_finger_pos_w, dim=1)
+        total_distance = dist_left + dist_right
+
+    # Use a squared exponential kernel for a more focused reward at close distances
+    # reward = exp(-alpha * distance^2)
+    return torch.exp(-alpha * total_distance.pow(2))
+
+
+
+def scaled_lin_vel(env: ManagerBasedRLEnv, std: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("object")) -> torch.Tensor:
+    asset: RigidObject = env.scene[asset_cfg.name]
+    return torch.tanh(torch.square(asset.data.root_lin_vel_b[:, 2]) / std)
+
+def object_ee_distance(
+    env: ManagerBasedRLEnv,
+    std: float,
+    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+    ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"),
+) -> torch.Tensor:
+    """Reward the agent for reaching the object using tanh-kernel."""
+    # extract the used quantities (to enable type-hinting)
+    object: RigidObject = env.scene[object_cfg.name]
+    ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
+    # Target object position: (num_envs, 3)
+    cube_pos_w = object.data.root_pos_w
+    # End-effector position: (num_envs, 3)
+    ee_w = ee_frame.data.target_pos_w[..., 0, :]
+    # Distance of the end-effector to the object: (num_envs,)
+    object_ee_distance = torch.norm(cube_pos_w - ee_w, dim=1)
+
+    return 1 - torch.tanh(object_ee_distance / std)
+
+
+
+def object_goal_distance(
+    env: ManagerBasedRLEnv,
+    std: float,
+    minimal_height: float,
+    command_name: str,
+    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+) -> torch.Tensor:
+    """Reward the agent for tracking the goal pose using tanh-kernel."""
+    # extract the used quantities (to enable type-hinting)
+    robot: RigidObject = env.scene[robot_cfg.name]
+    object: RigidObject = env.scene[object_cfg.name]
+    command = env.command_manager.get_command(command_name)
+    # compute the desired position in the world frame
+    des_pos_b = command[:, :3]
+    des_pos_w, _ = combine_frame_transforms(robot.data.root_pos_w, robot.data.root_quat_w, des_pos_b)
+    # distance of the end-effector to the object: (num_envs,)
+    distance = torch.norm(des_pos_w - object.data.root_pos_w, dim=1)
+    # rewarded if the object is lifted above the threshold
+    return (object.data.root_pos_w[:, 2] > minimal_height) * (1 - torch.tanh(distance / std))
+
+
+
+
+# ----------------------------------------------------------------------------------------------------------------
+
+def fingers_to_object_distance_tanh(
     env: ManagerBasedRLEnv,
     std: float,
     object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
@@ -127,57 +226,6 @@ def fingers_to_object_distance(
     # Use a tanh kernel to create a reward that is 1 at 0 distance and falls off
     return 1.0 - torch.tanh(total_distance / std)
 
-def scaled_lin_vel(env: ManagerBasedRLEnv, std: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("object")) -> torch.Tensor:
-    asset: RigidObject = env.scene[asset_cfg.name]
-    return torch.tanh(torch.square(asset.data.root_lin_vel_b[:, 2]) / std)
-
-def object_ee_distance(
-    env: ManagerBasedRLEnv,
-    std: float,
-    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
-    ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"),
-) -> torch.Tensor:
-    """Reward the agent for reaching the object using tanh-kernel."""
-    # extract the used quantities (to enable type-hinting)
-    object: RigidObject = env.scene[object_cfg.name]
-    ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
-    # Target object position: (num_envs, 3)
-    cube_pos_w = object.data.root_pos_w
-    # End-effector position: (num_envs, 3)
-    ee_w = ee_frame.data.target_pos_w[..., 0, :]
-    # Distance of the end-effector to the object: (num_envs,)
-    object_ee_distance = torch.norm(cube_pos_w - ee_w, dim=1)
-
-    return 1 - torch.tanh(object_ee_distance / std)
-
-
-
-def object_goal_distance(
-    env: ManagerBasedRLEnv,
-    std: float,
-    minimal_height: float,
-    command_name: str,
-    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
-    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
-) -> torch.Tensor:
-    """Reward the agent for tracking the goal pose using tanh-kernel."""
-    # extract the used quantities (to enable type-hinting)
-    robot: RigidObject = env.scene[robot_cfg.name]
-    object: RigidObject = env.scene[object_cfg.name]
-    command = env.command_manager.get_command(command_name)
-    # compute the desired position in the world frame
-    des_pos_b = command[:, :3]
-    # distance of the end-effector to the goal: (num_envs,)
-    distance = torch.norm(des_pos_b - object.data.root_pos_w[:, :3], dim=1)
-    # rewarded if the object is lifted above the threshold
-    return (object.data.root_pos_w[:, 2] > minimal_height) * (1 - torch.tanh(distance / std))
-
-
-
-# ----------------------------------------------------------------------------------------------------------------
-
-
-
 def stay_low(
     env: ManagerBasedRLEnv, minimal_height: float, object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
     ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame")
@@ -215,56 +263,6 @@ def ee_base_distance(
     return 1 - torch.tanh(ee_base_distance / std)
 
 
-def fingers_to_object_distance(
-    env: ManagerBasedRLEnv,
-    alpha: float,
-    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
-    ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"),
-) -> torch.Tensor:
-    """
-    Reward the agent for moving its end-effector fingers very close to the object.
-
-    This version uses a squared exponential (Gaussian) kernel, which provides a much
-    stronger reward signal when the fingers are extremely close to the object,
-    and the reward falls off very quickly with distance.
-
-    Args:
-        env: The environment instance.
-        alpha: A scaling factor for the exponential kernel. A larger value creates a
-               steeper, more focused reward.
-        object_cfg: The configuration for the target object. Defaults to "object".
-        ee_frame_cfg: The configuration for the end-effector FrameTransformer.
-                      Defaults to "ee_frame".
-
-    Returns:
-        A tensor containing the calculated reward for each environment.
-    """
-    # Extract the used quantities (to enable type-hinting)
-    object_asset: RigidObject = env.scene[object_cfg.name]
-    ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
-
-    # Object position in the world frame: (num_envs, 3)
-    object_pos_w = object_asset.data.root_pos_w
-    # End-effector frame positions in the world frame
-    ee_targets_w = ee_frame.data.target_pos_w
-    num_targets = ee_targets_w.shape[1]
-
-    # Check the number of tracked targets to avoid crashing
-    if num_targets == 0:
-        return torch.zeros(env.num_envs, device=env.device)
-    elif num_targets == 1:
-        hand_pos_w = ee_targets_w[:, 0, :]
-        total_distance = torch.norm(object_pos_w - hand_pos_w, dim=1)
-    else:
-        left_finger_pos_w = ee_targets_w[:, 0, :]
-        right_finger_pos_w = ee_targets_w[:, 1, :]
-        dist_left = torch.norm(object_pos_w - left_finger_pos_w, dim=1)
-        dist_right = torch.norm(object_pos_w - right_finger_pos_w, dim=1)
-        total_distance = dist_left + dist_right
-
-    # Use a squared exponential kernel for a more focused reward at close distances
-    # reward = exp(-alpha * distance^2)
-    return torch.exp(-alpha * total_distance.pow(2))
 
 def object_velocity_towards_goal_reward(
         env: ManagerBasedRLEnv,

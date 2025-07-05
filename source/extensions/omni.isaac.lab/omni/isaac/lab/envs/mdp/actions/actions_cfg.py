@@ -124,6 +124,23 @@ class JointPositionToLimitsActionCfg(ActionTermCfg):
         This operation is performed after applying the scale factor.
     """
 
+@configclass
+class JointVelocityActionCfg(ActionTermCfg):
+    """Configuration for the joint velocity action term.
+
+    See :class:`JointVelocityAction` for more details.
+    """
+
+    class_type: type[ActionTerm] = joint_actions.JointVelocityAction
+
+    use_default_offset: bool = True
+    """Whether to use default joint velocities configured in the articulation asset as offset.
+    Defaults to True.
+
+    This overrides the settings from :attr:`offset` if set to True.
+    """
+
+
 
 @configclass
 class EMAJointPositionToLimitsActionCfg(JointPositionToLimitsActionCfg):
