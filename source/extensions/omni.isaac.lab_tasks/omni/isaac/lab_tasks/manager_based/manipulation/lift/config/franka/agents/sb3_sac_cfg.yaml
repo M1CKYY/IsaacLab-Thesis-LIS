@@ -36,7 +36,7 @@ use_sde: False
 # For SAC, you define separate networks for the policy (pi) and Q-function (qf)
 policy_kwargs: "dict(
                   activation_fn=nn.ELU,
-                  net_arch=dict(pi=[64, 64], qf=[64, 64])
+                  net_arch=dict(pi=[128, 128, 64], qf=[128, 128, 64])
                 )"
 
 # Normalization settings (optional, but often recommended)

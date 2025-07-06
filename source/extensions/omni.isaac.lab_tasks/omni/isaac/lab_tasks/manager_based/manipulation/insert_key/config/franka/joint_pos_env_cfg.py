@@ -6,7 +6,7 @@
 from omni.isaac.lab.assets import RigidObjectCfg
 from omni.isaac.lab.sensors import FrameTransformerCfg
 from omni.isaac.lab.sensors.frame_transformer.frame_transformer_cfg import OffsetCfg
-from omni.isaac.lab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg, MassPropertiesCfg
+from omni.isaac.lab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg, MassPropertiesCfg, CollisionPropertiesCfg
 from omni.isaac.lab.sim.spawners.from_files.from_files_cfg import UsdFileCfg
 from omni.isaac.lab.assets import AssetBaseCfg
 from omni.isaac.lab.utils import configclass
@@ -34,7 +34,6 @@ class FrankaInsertKeyEnvCfg(InsertKeyEnvCfg):
         super().__post_init__()
 
         # Set Franka as robot
-
         self.scene.robot = FRANKA_PANDA_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot",
                                                           init_state=ArticulationCfg.InitialStateCfg(
                                                               joint_pos={
@@ -52,10 +51,6 @@ class FrankaInsertKeyEnvCfg(InsertKeyEnvCfg):
                                                               rot=(0.70711, 0, 0, -0.70711),
                                                           ))
         # Set actions for the specific Franka type (franka)
-        # self.actions.arm_action = mdp.JointPositionActionCfg(
-        #     asset_name="robot", joint_names=["panda_joint.*"], scale=0.5, use_default_offset=True
-        # )
-
         self.actions.arm_action = mdp.JointPositionActionCfg(
             asset_name="robot", joint_names=["panda_joint.*"], scale=0.3, use_default_offset=True
         )
@@ -91,8 +86,14 @@ class FrankaInsertKeyEnvCfg(InsertKeyEnvCfg):
                     max_depenetration_velocity=5.0,
                     disable_gravity=False,
                 ),
+                collision_props=CollisionPropertiesCfg(
+                    collision_prim_type="mesh",
+                    apply_to_children=True,
+                    propagate_contact_to_parent=True,
+                )
             ),
         )
+
 
         self.scene.box = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Box",
@@ -140,10 +141,49 @@ class FrankaInsertKeyEnvCfg(InsertKeyEnvCfg):
             ],
         )
 
+        self.scene.key_long_part_frame = FrameTransformerCfg(
+            prim_path="{ENV_REGEX_NS}/Key",
+            debug_vis=False,
+            target_frames=[
+                FrameTransformerCfg.FrameCfg(
+                    prim_path="{ENV_REGEX_NS}/Key/long_part",
+                    name="long_part",
+                    offset=OffsetCfg(
+                        pos=(0.0, 0.0, 0.046),
+                    ),
+                ),
+            ],
+        )
+
+        self.scene.key_head_frame = FrameTransformerCfg(
+            prim_path="{ENV_REGEX_NS}/Key",
+            debug_vis=False,
+            target_frames=[
+                FrameTransformerCfg.FrameCfg(
+                    prim_path="{ENV_REGEX_NS}/Key/head",
+                    name="head",
+                    offset=OffsetCfg(
+                        pos=(-0.028, -0.18, 0),
+                    ),
+                ),
+            ],
+        )
 
         # override rewards
-        self.rewards.approach_gripper_handle.params["offset"] = 0.04
-        self.rewards.grasp_handle.params["open_joint_pos"] = 0.04
-        self.rewards.grasp_handle.params["asset_cfg"].joint_names = ["panda_finger_.*"]
+        self.rewards.grasp_key.params["open_joint_pos"] = 0.04
+        self.rewards.grasp_key.params["asset_cfg"].joint_names = ["panda_finger_.*"]
 
 
+@configclass
+class FrankaInsertKeyEnvCfg_PLAY(FrankaInsertKeyEnvCfg):
+    def __post_init__(self):
+        # post init of parent
+        super().__post_init__()
+        # make a smaller scene for play
+        self.scene.num_envs = 50
+        self.scene.env_spacing = 2.5
+        # disable randomization for play
+        self.observations.policy.enable_corruption = False
+
+        self.rewards.grasp_key.params["open_joint_pos"] = 0.04
+        self.rewards.grasp_key.params["asset_cfg"].joint_names = ["panda_finger_.*"]

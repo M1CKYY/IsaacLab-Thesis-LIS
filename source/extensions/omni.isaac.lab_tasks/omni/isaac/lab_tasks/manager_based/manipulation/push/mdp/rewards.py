@@ -36,39 +36,43 @@ def object_ee_distance(
 
     return 1 - torch.tanh(object_ee_distance / std)
 
-def object_goal_frame_distance(
+def object_goal_distance(
     env: ManagerBasedRLEnv,
     std: float,
+    command_name: str,
+    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
     object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
-    goal_frame_cfg: SceneEntityCfg = SceneEntityCfg("frame"),
 ) -> torch.Tensor:
-    """Reward the agent for the distance between the object and the goal pose using tanh-kernel."""
+    """Reward the agent for tracking the goal pose using tanh-kernel."""
     # extract the used quantities (to enable type-hinting)
+    robot: RigidObject = env.scene[robot_cfg.name]
     object: RigidObject = env.scene[object_cfg.name]
-    goal_frame = env.scene[goal_frame_cfg.name]
-    # Target object position: (num_envs, 3)
-    cube_pos_w = object.data.root_pos_w
-    # print(cube_pos_w.shape)
-    # # End-effector position: (num_envs, 3)
-    # print(dir(goal_frame))
-    # print(vars(goal_frame))
-    # goal_frame_w = goal_frame.data.target_pos_w[..., 0, :]
-    # Distance of the end-effector to the object: (num_envs,)
-    # # hard coded goal_frame position
-    frame_pos_w = goal_frame.data.root_pos_w
-    object_goal_frame_vector = frame_pos_w - cube_pos_w
-    object_goal_frame_distance = torch.norm(object_goal_frame_vector, dim=1)
+    command = env.command_manager.get_command(command_name)
+    # compute the desired position in the world frame
+    des_pos_b = command[:, :3]
+    des_pos_w, _ = combine_frame_transforms(robot.data.root_pos_w, robot.data.root_quat_w, des_pos_b)
+    # distance of the end-effector to the object: (num_envs,)
+    distance = torch.norm(des_pos_w - object.data.root_pos_w, dim=1)
+    # rewarded if the object is lifted above the threshold
+    return 1 - torch.tanh(distance / std)
 
-    def smooth_signed_log(x, eps=1e-6):
-        return torch.sign(x) * torch.log1p(torch.abs(x) + eps)
+def position_command_error_tanh(
+    env: ManagerBasedRLEnv, std: float, command_name: str, asset_cfg: SceneEntityCfg
+) -> torch.Tensor:
+    """Reward tracking of the position using the tanh kernel.
 
-    def fast_growth(x, k=3.0, p=1.0):
-        return torch.sign(x) * (torch.exp(k * torch.abs(x) ** p) - 1) / (torch.exp(torch.tensor(k)) - 1)
-
-    reward = smooth_signed_log((torch.tensordot(object.data.root_lin_vel_w, object_goal_frame_vector)) * torch.norm(object.data.root_lin_vel_w))
-
-
-    return torch.where(object_goal_frame_distance > 0.3, reward, 4)
+    The function computes the position error between the desired position (from the command) and the
+    current position of the asset's body (in world frame) and maps it with a tanh kernel.
+    """
+    # extract the asset (to enable type hinting)
+    asset: RigidObject = env.scene[asset_cfg.name]
+    command = env.command_manager.get_command(command_name)
+    # obtain the desired and current positions
+    des_pos_b = command[:, :3]
+    des_pos_w, _ = combine_frame_transforms(asset.data.root_state_w[:, :3], asset.data.root_state_w[:, 3:7], des_pos_b)
+    curr_pos_w = asset.data.body_state_w[:, asset_cfg.body_ids[0], :3]  # type: ignore
+    distance = torch.norm(curr_pos_w - des_pos_w, dim=1)
+    return 1 - torch.tanh(distance / std)
 
 def object_fail(
     env: ManagerBasedRLEnv,

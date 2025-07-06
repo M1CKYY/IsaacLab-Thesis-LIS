@@ -148,17 +148,6 @@ class TerminationsCfg:
     )
 
 
-@configclass
-class CurriculumCfg:
-    """Curriculum terms for the MDP."""
-
-    action_rate = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -1e-1, "num_steps": 10000}
-    )
-
-    joint_vel = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "joint_vel", "weight": -1e-1, "num_steps": 10000}
-    )
 
 
 @configclass
@@ -229,8 +218,7 @@ class LiftEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the lifting environment."""
 
     # Scene settings
-    scene: ObjectTableSceneCfg = ObjectTableSceneCfg(num_envs=65536, env_spacing=2.5)
-    scene.num_envs = 65536
+    scene: ObjectTableSceneCfg = ObjectTableSceneCfg(env_spacing=2.5)
 
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()

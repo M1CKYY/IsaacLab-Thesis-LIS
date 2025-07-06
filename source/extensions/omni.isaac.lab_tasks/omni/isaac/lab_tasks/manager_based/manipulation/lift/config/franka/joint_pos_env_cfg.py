@@ -11,6 +11,9 @@ from omni.isaac.lab.sim.spawners.from_files.from_files_cfg import UsdFileCfg
 from omni.isaac.lab.assets import AssetBaseCfg
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.assets import ISAAC_NUCLEUS_DIR
+from omni.isaac.lab.envs.mdp.actions.actions_cfg import DifferentialInverseKinematicsActionCfg
+from omni.isaac.lab.controllers.differential_ik_cfg import DifferentialIKController
+from omni.isaac.lab.controllers.differential_ik_cfg import DifferentialIKControllerCfg
 
 from omni.isaac.lab_tasks.manager_based.manipulation.lift import mdp
 from omni.isaac.lab_tasks.manager_based.manipulation.lift.lift_env_cfg import LiftEnvCfg
@@ -27,15 +30,32 @@ class FrankaCubeLiftEnvCfg(LiftEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        self.scene.num_envs = 32768
+        self.scene.num_envs = 8192
         # Set Franka as robot
         self.scene.robot = FRANKA_PANDA_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
 
         # Set actions for the specific robot type (franka)
         self.actions.arm_action = mdp.JointPositionActionCfg(
-            asset_name="robot", joint_names=["panda_joint.*"], scale=0.5, use_default_offset=True
+            asset_name="robot", joint_names=["panda_joint.*"], scale=0.3, use_default_offset=True
         )
+        # self.actions.arm_action = mdp.DifferentialInverseKinematicsActionCfg(
+        #     asset_name="robot",
+        #     joint_names=["panda_joint.*"],
+        #     body_name="panda_hand",
+        #     scale=0.5,
+        #     # The controller configuration for the IK solver.
+        #     controller=DifferentialIKControllerCfg(
+        #         # Command both position and orientation for full control
+        #         command_type="pose",
+        #         # Use relative mode for smoother, more stable learning with RL agents
+        #         use_relative_mode=True,
+        #         # Use the Damped Least Squares method for robust handling of singularities
+        #         ik_method="dls",
+        #         # Set a damping factor for stability
+        #         ik_params={"lambda_val": 0.05}
+        #     )
+        # )
         self.actions.gripper_action = mdp.BinaryJointPositionActionCfg(
             asset_name="robot",
             joint_names=["panda_finger.*"],

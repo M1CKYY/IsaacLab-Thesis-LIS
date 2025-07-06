@@ -84,27 +84,7 @@ class FrankaCubePushEnvCfg(PushEnvCfg):
         # )
 
         # Listens to the required transforms
-        marker_cfg = FRAME_MARKER_CFG.copy()
-        marker_cfg.markers["frame"].scale = (0.1, 0.1, 0.1)
-        marker_cfg.prim_path = "/Visuals/FrameTransformer"
 
-        self.scene.frame = RigidObjectCfg(
-            prim_path="{ENV_REGEX_NS}/Frame",
-            init_state=RigidObjectCfg.InitialStateCfg(
-                pos=(0.1568639005333959, -0.1690530715030712, 0.7176599999999997),),
-            spawn=UsdFileCfg(
-                usd_path="/home/michias/Documents/Isaac Custom Environments/box_push/frame_prim_rigid.usd",
-                scale=(0.1, 0.1, 0.1),
-                rigid_props=RigidBodyPropertiesCfg(
-                    solver_position_iteration_count=16,
-                    solver_velocity_iteration_count=1,
-                    max_angular_velocity=1000.0,
-                    max_linear_velocity=1000.0,
-                    max_depenetration_velocity=5.0,
-                    disable_gravity=False,
-                ),
-            ),
-        )
 
         self.scene.ee_frame = FrameTransformerCfg(
             prim_path="{ENV_REGEX_NS}/Robot/panda_link0",  # Basis-Frame
@@ -118,3 +98,20 @@ class FrankaCubePushEnvCfg(PushEnvCfg):
             ],
         )
 
+
+        self.commands.object_pose.body_name = "panda_hand"
+
+
+
+
+
+@configclass
+class FrankaCubePushEnvPLAYCfg(FrankaCubePushEnvCfg):
+    def __post_init__(self):
+        # post init of parent
+        super().__post_init__()
+        # make a smaller scene for play
+        self.scene.num_envs = 50
+        self.scene.env_spacing = 2.5
+        # disable randomization for play
+        self.observations.policy.enable_corruption = False

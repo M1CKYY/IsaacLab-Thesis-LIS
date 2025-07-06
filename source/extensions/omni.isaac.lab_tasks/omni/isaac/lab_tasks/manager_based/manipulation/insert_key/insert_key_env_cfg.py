@@ -40,11 +40,14 @@ class InsertKeySceneCfg(InteractiveSceneCfg):
     # robots: will be populated by agent env cfg
     robot: ArticulationCfg = MISSING
     # # end-effector sensor: will be populated by agent env cfg
-    # ee_frame: FrameTransformerCfg = MISSING
+    ee_frame: FrameTransformerCfg = MISSING
     # # target object: will be populated by agent env cfg
     box: RigidObjectCfg | DeformableObjectCfg = MISSING
     #cube2: RigidObjectCfg | DeformableObjectCfg = MISSING
     key: RigidObjectCfg | DeformableObjectCfg = MISSING
+    key_head_frame: FrameTransformerCfg = MISSING
+    key_long_part_frame: FrameTransformerCfg = MISSING
+
     table: RigidObjectCfg | DeformableObjectCfg = MISSING
 
 
@@ -91,6 +94,8 @@ class ObservationsCfg:
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
         key_position = ObsTerm(func=mdp.object_position_in_robot_root_frame, params={"object_cfg": SceneEntityCfg("key")})
         key_orientation = ObsTerm(func=mdp.root_quat_w, params={"asset_cfg": SceneEntityCfg("key")})
+        box_position = ObsTerm(func=mdp.object_position_in_robot_root_frame, params={"object_cfg": SceneEntityCfg("box")})
+        box_orientation = ObsTerm(func=mdp.root_quat_w, params={"asset_cfg": SceneEntityCfg("box")})
         actions = ObsTerm(func=mdp.last_action)
 
         def __post_init__(self):
@@ -133,15 +138,10 @@ class TerminationsCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1, "object_cfg": SceneEntityCfg("key")}, weight=2.0)
+    ee_key_dist = RewTerm(func=mdp.distance, params={"std": 0.1, "object1_cfg": SceneEntityCfg("key"), "object2_cfg": SceneEntityCfg("ee_frame")}, weight=2.0)
 
-    approach_ee_handle = RewTerm(func=mdp.approach_ee_handle, weight=2.0, params={"threshold": 0.2, "object_cfg": SceneEntityCfg("key")})
-    # align_ee_handle = RewTerm(func=mdp.align_ee_handle, weight=0.5)
-
-    approach_gripper_handle = RewTerm(func=mdp.approach_gripper_handle, weight=5.0, params={"offset": MISSING})
-
-    grasp_handle = RewTerm(
-        func=mdp.grasp_handle,
+    grasp_key = RewTerm(
+        func=mdp.grasp_key,
         weight=0.5,
         params={
             "threshold": 0.03,
@@ -152,15 +152,34 @@ class RewardsCfg:
 
     key_to_box_height = RewTerm(
         func=mdp.key_to_box_height,
-        params={"object_cfg": SceneEntityCfg("key")},
+        params={"std": 0.3},
         weight=1.5,
     )
+
+    align_head_box_inserting = RewTerm(
+        func=mdp.align_head_box_inserting,
+        weight=1.5,
+    )
+
+
+    key_box_dist = RewTerm(func=mdp.distance, params={"std": 0.1, "object1_cfg": SceneEntityCfg("key"),
+                                                         "object2_cfg": SceneEntityCfg("box")}, weight=2.0)
+
+
 
     # object_goal_frame_distance = RewTerm(
     #     func=mdp.object_goal_frame_distance,
     #     params={"std": 0.3,  "object_cfg": SceneEntityCfg("box")},
     #     weight=1.0,
     # )
+
+    #align_ee_handle = RewTerm(func=mdp.align_ee_handle, weight=0.5)
+
+
+
+
+
+
 
     key_fail = RewTerm(
         func=mdp.object_fail,
@@ -192,7 +211,7 @@ class RewardsCfg:
 class InsertKeyEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the lifting environment."""
 
-    scene: InsertKeySceneCfg = InsertKeySceneCfg(num_envs=64, env_spacing=3)
+    scene: InsertKeySceneCfg = InsertKeySceneCfg(env_spacing=3)
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     rewards: RewardsCfg = RewardsCfg()

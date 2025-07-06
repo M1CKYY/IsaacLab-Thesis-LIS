@@ -49,7 +49,6 @@ class PushSceneCfg(InteractiveSceneCfg):
     # # target object: will be populated by agent env cfg
     cube1: RigidObjectCfg | DeformableObjectCfg = MISSING
     #cube2: RigidObjectCfg | DeformableObjectCfg = MISSING
-    frame: AssetBaseCfg = MISSING
     table: RigidObjectCfg | DeformableObjectCfg = MISSING
 
 
@@ -106,6 +105,7 @@ class ObservationsCfg:
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
         cube1_position = ObsTerm(func=mdp.object_position_in_robot_root_frame, params={"object_cfg": SceneEntityCfg("cube1")})
         #cube2_position = ObsTerm(func=mdp.object_position_in_robot_root_frame, params={"object_cfg": SceneEntityCfg("cube2")})
+        pose_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "object_pose"})
         actions = ObsTerm(func=mdp.last_action)
 
         def __post_init__(self):
@@ -134,6 +134,20 @@ class EventCfg:
 
 
 
+@configclass
+class CommandsCfg:
+    """Command terms for the MDP."""
+
+    object_pose = mdp.UniformPoseCommandCfg(
+        asset_name="robot",
+        body_name=MISSING,  # will be set by agent env cfg
+        resampling_time_range=(5.0, 5.0),
+        debug_vis=True,
+        ranges=mdp.UniformPoseCommandCfg.Ranges(
+            pos_x=(0.4, 0.6), pos_y=(-0.25, 0.25), pos_z=(0.718, 0.718), roll=(0.0, 0.0), pitch=(0.0, 0.0), yaw=(0.0, 0.0)
+        ),
+    )
+
 
 @configclass
 class TerminationsCfg:
@@ -151,9 +165,9 @@ class RewardsCfg:
     reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1, "object_cfg": SceneEntityCfg("cube1")}, weight=2.0)
 
     object_goal_frame_distance = RewTerm(
-        func=mdp.object_goal_frame_distance,
-        params={"std": 0.3,  "object_cfg": SceneEntityCfg("cube1")},
-        weight=1.0,
+        func=mdp.object_goal_distance,
+        params={"std": 0.3,  "object_cfg": SceneEntityCfg("cube1"), "command_name": "object_pose"},
+        weight=5.0,
     )
 
     object_fail = RewTerm(
@@ -180,10 +194,11 @@ class RewardsCfg:
 class PushEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the lifting environment."""
 
-    scene: PushSceneCfg = PushSceneCfg(num_envs=64, env_spacing=3)
+    scene: PushSceneCfg = PushSceneCfg(env_spacing=3)
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     rewards: RewardsCfg = RewardsCfg()
+    commands: CommandsCfg = CommandsCfg()
     terminations: TerminationsCfg = TerminationsCfg()
     events: EventCfg = EventCfg()
 
