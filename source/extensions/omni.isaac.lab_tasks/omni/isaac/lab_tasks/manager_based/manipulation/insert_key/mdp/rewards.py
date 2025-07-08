@@ -83,6 +83,28 @@ def distance(
     return 1 - torch.tanh(object_ee_distance / std)
 
 
+def distance2(
+    env: ManagerBasedRLEnv,
+    std: float,
+    object1_cfg: SceneEntityCfg = SceneEntityCfg("box"),
+    object2_cfg: SceneEntityCfg = SceneEntityCfg("key_head_frame"),
+) -> torch.Tensor:
+    """Reward the agent for reaching the object using tanh-kernel."""
+    # extract the used quantities (to enable type-hinting)
+    object1: RigidObject = env.scene[object1_cfg.name]
+    object2: FrameTransformer = env.scene["key_head_frame"]
+    # Target object position: (num_envs, 3)
+    object1_pos_w = object1.data.root_pos_w
+    # End-effector position: (num_envs, 3)
+    object2_pos_w = object2.data.target_pos_w[..., 0, :]
+
+    # Distance of the end-effector to the object: (num_envs,)
+    object_ee_distance = torch.norm(object1_pos_w - object2_pos_w, dim=1)
+
+    return 1 - torch.tanh(object_ee_distance / std)
+
+
+
 def key_to_box_dist(env: ManagerBasedRLEnv, threshold: float,
                        object_cfg: SceneEntityCfg = SceneEntityCfg("box"),
                        ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"),
@@ -202,7 +224,7 @@ def key_to_box_height(
     object: RigidObject = env.scene[object_cfg.name]
     object2: RigidObject = env.scene[object_cfg2.name]
     dist_vec = object.data.root_pos_w[:, 2] - object2.data.root_pos_w[:, 2]
-    return torch.tanh(dist_vec/std)
+    return 1.0 - torch.tanh(dist_vec/std)
 
 
 # def object_goal_frame_distance(
@@ -235,11 +257,14 @@ def align_head_box_inserting(env: ManagerBasedRLEnv,
                        head_frame: SceneEntityCfg = SceneEntityCfg("key_head_frame")
     ) -> torch.Tensor:
 
-    head_frame: FrameTransformer = env.scene[head_frame.name]
+    head_frame: FrameTransformer = env.scene["key_head_frame"]
     object: RigidObject = env.scene[object_cfg.name]
 
 
-    head_quat = head_frame.data.target_quat_w[..., 0, :]
+    try:
+        head_quat = head_frame.data.target_quat_w[..., 0, :]
+    except AttributeError:
+        return torch.zeros(env.num_envs).to('cuda:0')
     box_quat = object.data.root_quat_w
 
 

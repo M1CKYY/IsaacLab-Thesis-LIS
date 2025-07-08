@@ -22,6 +22,7 @@ from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.assets import ISAAC_NUCLEUS_DIR
 from omni.isaac.lab_assets.franka import FRANKA_PANDA_CFG  # isort: skip
 
+from omni.isaac.lab.markers.config import FRAME_MARKER_CFG  # isort: skip
 
 from . import mdp
 
@@ -30,6 +31,9 @@ from . import mdp
 # Scene definition
 ##
 
+
+FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
+FRAME_MARKER_SMALL_CFG.markers["frame"].scale = (0.10, 0.10, 0.10)
 
 @configclass
 class InsertKeySceneCfg(InteractiveSceneCfg):
@@ -45,8 +49,6 @@ class InsertKeySceneCfg(InteractiveSceneCfg):
     box: RigidObjectCfg | DeformableObjectCfg = MISSING
     #cube2: RigidObjectCfg | DeformableObjectCfg = MISSING
     key: RigidObjectCfg | DeformableObjectCfg = MISSING
-    key_head_frame: FrameTransformerCfg = MISSING
-    key_long_part_frame: FrameTransformerCfg = MISSING
 
     table: RigidObjectCfg | DeformableObjectCfg = MISSING
 
@@ -66,6 +68,37 @@ class InsertKeySceneCfg(InteractiveSceneCfg):
         prim_path="/World/DomeLight",
         spawn=sim_utils.DomeLightCfg(color=(0.9, 0.9, 0.9), intensity=2500.0),
         init_state=AssetBaseCfg.InitialStateCfg(rot=(0.7, 0.4, 0.4, 0.0))
+    )
+    # marker_cfg = FRAME_MARKER_CFG.copy()
+    # marker_cfg.markers["frame"].scale = (0.1, 0.1, 0.1)
+    # marker_cfg.prim_path = "/Visuals/FrameTransformer"
+
+    key_long_part_frame = FrameTransformerCfg(
+        prim_path="{ENV_REGEX_NS}/Key/handle",
+        debug_vis=False,
+        target_frames=[
+            FrameTransformerCfg.FrameCfg(
+                prim_path="{ENV_REGEX_NS}/Key/long_part",
+                name="key_long_part_frame",
+                offset=OffsetCfg(
+                    pos=(0.0, 0.0, 0.046),
+                ),
+            ),
+        ],
+    )
+
+    key_head_frame = FrameTransformerCfg(
+        prim_path="{ENV_REGEX_NS}/Key",
+        debug_vis=False,
+        target_frames=[
+            FrameTransformerCfg.FrameCfg(
+                prim_path="{ENV_REGEX_NS}/Key/head",
+                name="key_head_frame",
+                offset=OffsetCfg(
+                    pos=(-0.028, -0.18, 0),
+                ),
+            ),
+        ],
     )
 
 
@@ -162,11 +195,11 @@ class RewardsCfg:
     )
 
 
-    key_box_dist = RewTerm(func=mdp.distance, params={"std": 0.1, "object1_cfg": SceneEntityCfg("key"),
-                                                         "object2_cfg": SceneEntityCfg("box")}, weight=2.0)
+    key_box_dist = RewTerm(func=mdp.distance2, params={"std": 0.1, "object1_cfg": SceneEntityCfg("box"),
+                                                         "object2_cfg": SceneEntityCfg("key_head_frame")}, weight=2.0)
 
 
-
+    #
     # object_goal_frame_distance = RewTerm(
     #     func=mdp.object_goal_frame_distance,
     #     params={"std": 0.3,  "object_cfg": SceneEntityCfg("box")},

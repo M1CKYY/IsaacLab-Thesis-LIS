@@ -17,7 +17,8 @@ class FrankaReachPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
     max_iterations = 1000
     save_interval = 50
-    experiment_name = "franka_reach"
+    task_name = "franka_reach"
+    experiment_name = ""
     run_name = ""
     resume = False
     empirical_normalization = False

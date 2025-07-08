@@ -105,7 +105,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     env_cfg.seed = agent_cfg.seed
     env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
 
-    log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
+    print(os.path.join("logs", "rsl_rl", agent_cfg.task_name))
+    log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.task_name, agent_cfg.experiment_name)
     log_root_path = os.path.abspath(log_root_path)
     print(f"[INFO] Logging experiment in directory: {log_root_path}")
     log_dir = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

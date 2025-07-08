@@ -86,11 +86,6 @@ class FrankaInsertKeyEnvCfg(InsertKeyEnvCfg):
                     max_depenetration_velocity=5.0,
                     disable_gravity=False,
                 ),
-                collision_props=CollisionPropertiesCfg(
-                    collision_prim_type="mesh",
-                    apply_to_children=True,
-                    propagate_contact_to_parent=True,
-                )
             ),
         )
 
@@ -141,33 +136,7 @@ class FrankaInsertKeyEnvCfg(InsertKeyEnvCfg):
             ],
         )
 
-        self.scene.key_long_part_frame = FrameTransformerCfg(
-            prim_path="{ENV_REGEX_NS}/Key",
-            debug_vis=False,
-            target_frames=[
-                FrameTransformerCfg.FrameCfg(
-                    prim_path="{ENV_REGEX_NS}/Key/long_part",
-                    name="long_part",
-                    offset=OffsetCfg(
-                        pos=(0.0, 0.0, 0.046),
-                    ),
-                ),
-            ],
-        )
 
-        self.scene.key_head_frame = FrameTransformerCfg(
-            prim_path="{ENV_REGEX_NS}/Key",
-            debug_vis=False,
-            target_frames=[
-                FrameTransformerCfg.FrameCfg(
-                    prim_path="{ENV_REGEX_NS}/Key/head",
-                    name="head",
-                    offset=OffsetCfg(
-                        pos=(-0.028, -0.18, 0),
-                    ),
-                ),
-            ],
-        )
 
         # override rewards
         self.rewards.grasp_key.params["open_joint_pos"] = 0.04

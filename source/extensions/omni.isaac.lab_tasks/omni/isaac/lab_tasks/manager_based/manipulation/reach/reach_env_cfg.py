@@ -99,10 +99,11 @@ class ObservationsCfg:
         """Observations for policy group."""
 
         # observation terms (order preserved)
-        joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
+        joint_pos = ObsTerm(func=mdp.joint_pos)
+        joint_vel = ObsTerm(func=mdp.joint_vel)
         pose_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "ee_pose"})
-        actions = ObsTerm(func=mdp.last_action)
+        #actions = ObsTerm(func=mdp.last_action)
+        #goal_distance = ObsTerm(func=mdp.goal_dist, params={"command_name": "ee_pose"})
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -195,7 +196,7 @@ class ReachEnvCfg(ManagerBasedRLEnvCfg):
     rewards: RewardsCfg = RewardsCfg()
     terminations: TerminationsCfg = TerminationsCfg()
     events: EventCfg = EventCfg()
-    curriculum: CurriculumCfg = CurriculumCfg()
+    #curriculum: CurriculumCfg = CurriculumCfg()
 
     def __post_init__(self):
         """Post initialization."""

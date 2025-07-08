@@ -105,15 +105,16 @@ class RslRlOnPolicyRunnerCfg:
     save_interval: int = MISSING
     """The number of iterations between saves."""
 
+    task_name: str = MISSING
+    """The task name."""
+
     experiment_name: str = MISSING
     """The experiment name."""
 
     run_name: str = ""
     """The run name. Default is empty string.
 
-    The name of the run directory is typically the time-stamp at execution. If the run name is not empty,
-    then it is appended to the run directory's name, i.e. the logging directory's name will become
-    ``{time-stamp}_{run_name}``.
+    
     """
 
     ##
