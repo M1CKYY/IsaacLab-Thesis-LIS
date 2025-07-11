@@ -86,8 +86,8 @@ class CommandsCfg:
 class ActionsCfg:
     """Action specifications for the MDP."""
 
-    arm_action: mdp.JointPositionActionCfg = MISSING
-    gripper_action: ActionTerm | None = None
+    arm_action: mdp.JointPositionActionCfg | mdp.JointVelocityActionCfg | mdp.JointEffortActionCfg | mdp.DifferentialInverseKinematicsActionCfg = MISSING
+    gripper_action: mdp.BinaryJointPositionActionCfg = None
 
 
 @configclass
@@ -101,7 +101,9 @@ class ObservationsCfg:
         # observation terms (order preserved)
         joint_pos = ObsTerm(func=mdp.joint_pos)
         joint_vel = ObsTerm(func=mdp.joint_vel)
+        #goal_direction = ObsTerm(func=mdp.goal_direction, params={"command_name": "ee_pose"})
         pose_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "ee_pose"})
+        ee_orientation = ObsTerm(func=mdp.orientation_error, params={"command_name": "ee_pose"})
         #actions = ObsTerm(func=mdp.last_action)
         #goal_distance = ObsTerm(func=mdp.goal_dist, params={"command_name": "ee_pose"})
 
@@ -164,17 +166,17 @@ class TerminationsCfg:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
 
-@configclass
-class CurriculumCfg:
-    """Curriculum terms for the MDP."""
-
-    action_rate = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -0.005, "num_steps": 4500}
-    )
-
-    joint_vel = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "joint_vel", "weight": -0.001, "num_steps": 4500}
-    )
+# @configclass
+# class CurriculumCfg:
+#     """Curriculum terms for the MDP."""
+#
+#     action_rate = CurrTerm(
+#         func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -0.005, "num_steps": 4500}
+#     )
+#
+#     joint_vel = CurrTerm(
+#         func=mdp.modify_reward_weight, params={"term_name": "joint_vel", "weight": -0.001, "num_steps": 4500}
+#     )
 
 
 ##

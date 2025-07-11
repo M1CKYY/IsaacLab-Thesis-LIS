@@ -29,10 +29,8 @@ def object_is_lifted(
 
 def close_gripper_near_object(
     env: ManagerBasedRLEnv,
-    gripper_action_name: str,
-    std: float,
-    minimal_height: float,
-    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+    min_distance: float = 0.19,
+    object_cfg: SceneEntityCfg = SceneEntityCfg("key_handle"),
     ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"),
 ) -> torch.Tensor:
     """Penalizes the agent for closing the gripper when it is far from the object."""
@@ -44,17 +42,10 @@ def close_gripper_near_object(
     hand_pos_w = ee_frame.data.target_pos_w[:, 0, :]
     object_pos_w = object_asset.data.root_pos_w
     distance = torch.norm(hand_pos_w - object_pos_w, dim=1)
-    # 3. Implement the desired logic using torch.where
-    # First, define the reward signal for when the agent is CLOSING
-    # It gets +1 if near the object, otherwise 0.
-    reward_when_closing = torch.where(distance < minimal_height, 1.0, 0.0)
+    reward_when_closing = torch.where(distance < min_distance, 1.0, 0.0)
 
-    # The reward for OPENING the gripper is always -1.
     reward_when_opening = 0.1
 
-    # Finally, use the `is_closing_action` boolean tensor as a switch:
-    # If `is_closing_action` is True, it returns `reward_when_closing`.
-    # If `is_closing_action` is False, it returns `reward_when_opening`.
     return torch.where(is_closing_action, reward_when_closing*5, reward_when_opening)
 
 
@@ -92,11 +83,11 @@ def distance2(
     """Reward the agent for reaching the object using tanh-kernel."""
     # extract the used quantities (to enable type-hinting)
     object1: RigidObject = env.scene[object1_cfg.name]
-    object2: FrameTransformer = env.scene["key_head_frame"]
+    object2: FrameTransformer = env.scene[object2_cfg.name]
     # Target object position: (num_envs, 3)
     object1_pos_w = object1.data.root_pos_w
     # End-effector position: (num_envs, 3)
-    object2_pos_w = object2.data.target_pos_w[..., 0, :]
+    object2_pos_w = object2.data.target_pos_w[:, 0, :]
 
     # Distance of the end-effector to the object: (num_envs,)
     object_ee_distance = torch.norm(object1_pos_w - object2_pos_w, dim=1)

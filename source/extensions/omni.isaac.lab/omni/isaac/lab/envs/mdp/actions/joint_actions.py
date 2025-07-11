@@ -207,7 +207,7 @@ class JointVelocityAction(JointAction):
             self._offset = self._asset.data.default_joint_vel[:, self._joint_ids].clone()
 
     def apply_actions(self):
-        # set joint velocity targets
+        # set joint velocity targets]
         self._asset.set_joint_velocity_target(self.processed_actions, joint_ids=self._joint_ids)
 
 

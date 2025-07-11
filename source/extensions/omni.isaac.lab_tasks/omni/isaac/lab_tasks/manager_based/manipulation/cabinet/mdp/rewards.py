@@ -16,18 +16,6 @@ if TYPE_CHECKING:
 
 
 def approach_ee_handle(env: ManagerBasedRLEnv, threshold: float) -> torch.Tensor:
-    """Reward the robot for reaching the drawer handle using inverse-square law.
-
-    It uses a piecewise function to reward the robot for reaching the handle.
-
-    .. math::
-
-        reward = \begin{cases}
-            2 * (1 / (1 + distance^2))^2 & \text{if } distance \leq threshold \\
-            (1 / (1 + distance^2))^2 & \text{otherwise}
-        \end{cases}
-
-    """
     ee_tcp_pos = env.scene["ee_frame"].data.target_pos_w[..., 0, :]
     handle_pos = env.scene["cabinet_frame"].data.target_pos_w[..., 0, :]
 

@@ -45,6 +45,8 @@ class InsertKeySceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = MISSING
     # # end-effector sensor: will be populated by agent env cfg
     ee_frame: FrameTransformerCfg = MISSING
+    key_head_frame: FrameTransformerCfg = MISSING
+    key_long_part_frame: FrameTransformerCfg = MISSING
     # # target object: will be populated by agent env cfg
     box: RigidObjectCfg | DeformableObjectCfg = MISSING
     #cube2: RigidObjectCfg | DeformableObjectCfg = MISSING
@@ -73,33 +75,7 @@ class InsertKeySceneCfg(InteractiveSceneCfg):
     # marker_cfg.markers["frame"].scale = (0.1, 0.1, 0.1)
     # marker_cfg.prim_path = "/Visuals/FrameTransformer"
 
-    key_long_part_frame = FrameTransformerCfg(
-        prim_path="{ENV_REGEX_NS}/Key/handle",
-        debug_vis=False,
-        target_frames=[
-            FrameTransformerCfg.FrameCfg(
-                prim_path="{ENV_REGEX_NS}/Key/long_part",
-                name="key_long_part_frame",
-                offset=OffsetCfg(
-                    pos=(0.0, 0.0, 0.046),
-                ),
-            ),
-        ],
-    )
 
-    key_head_frame = FrameTransformerCfg(
-        prim_path="{ENV_REGEX_NS}/Key",
-        debug_vis=False,
-        target_frames=[
-            FrameTransformerCfg.FrameCfg(
-                prim_path="{ENV_REGEX_NS}/Key/head",
-                name="key_head_frame",
-                offset=OffsetCfg(
-                    pos=(-0.028, -0.18, 0),
-                ),
-            ),
-        ],
-    )
 
 
 ##

@@ -5,11 +5,12 @@
 
 import math
 
+from omni.isaac.lab.controllers import DifferentialIKControllerCfg
 from omni.isaac.lab.utils import configclass
 
 import omni.isaac.lab_tasks.manager_based.manipulation.reach.mdp as mdp
 from omni.isaac.lab_tasks.manager_based.manipulation.reach.reach_env_cfg import ReachEnvCfg
-from omni.isaac.lab.sensors import FrameTransformerCfg
+from omni.isaac.lab.sensors import FrameTransformerCfg, FrameTransformer
 from omni.isaac.lab.sensors.frame_transformer.frame_transformer_cfg import OffsetCfg
 from omni.isaac.lab.utils import configclass
 
@@ -59,10 +60,44 @@ class FrankaReachEnvCfg(ReachEnvCfg):
         self.rewards.end_effector_position_tracking.params["asset_cfg"].body_names = ["panda_hand"]
         self.rewards.end_effector_position_tracking_fine_grained.params["asset_cfg"].body_names = ["panda_hand"]
         self.rewards.end_effector_orientation_tracking.params["asset_cfg"].body_names = ["panda_hand"]
+        self.rewards.end_effector_orientation_tracking.params["asset_cfg"].body_names = ["panda_hand"]
 
         # override actions
         self.actions.arm_action = mdp.JointPositionActionCfg(
             asset_name="robot", joint_names=["panda_joint.*"], scale=0.5, use_default_offset=True
+        )
+
+        # self.actions.arm_action = mdp.JointVelocityActionCfg(
+        #     asset_name="robot", joint_names=["panda_joint.*"], scale=1000, use_default_offset=True
+        # )
+
+        # self.actions.arm_action = mdp.JointEffortActionCfg(
+        #     asset_name="robot", joint_names=["panda_joint.*"], scale=1,
+        # )
+
+        # self.actions.arm_action = mdp.DifferentialInverseKinematicsActionCfg(
+        #     asset_name="robot",
+        #     joint_names=["panda_joint.*"],
+        #     body_name="panda_hand",
+        #     scale=0.5,
+        #     # The controller configuration for the IK solver.
+        #     controller=DifferentialIKControllerCfg(
+        #         # Command both position and orientation for full control
+        #         command_type="pose",
+        #         # Use relative mode for smoother, more stable learning with RL agents
+        #         use_relative_mode=True,
+        #         # Use the Damped Least Squares method for robust handling of singularities
+        #         ik_method="dls",
+        #         # Set a damping factor for stability
+        #         ik_params={"lambda_val": 0.05}
+        #     )
+        # )
+
+        self.actions.gripper_action = mdp.BinaryJointPositionActionCfg(
+            asset_name="robot",
+            joint_names=["panda_finger.*"],
+            open_command_expr={"panda_finger_.*": 0.04},
+            close_command_expr={"panda_finger_.*": 0.0},
         )
         # override command generator body
         # end-effector is along z-direction
