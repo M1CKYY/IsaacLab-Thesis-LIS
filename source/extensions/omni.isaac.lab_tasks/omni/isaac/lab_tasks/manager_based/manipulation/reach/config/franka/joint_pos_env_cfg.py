@@ -72,7 +72,7 @@ class FrankaReachEnvCfg(ReachEnvCfg):
         # )
 
         # self.actions.arm_action = mdp.JointEffortActionCfg(
-        #     asset_name="robot", joint_names=["panda_joint.*"], scale=1,
+        #     asset_name="robot", joint_names=["panda_joint.*"], scale=100,
         # )
 
         # self.actions.arm_action = mdp.DifferentialInverseKinematicsActionCfg(

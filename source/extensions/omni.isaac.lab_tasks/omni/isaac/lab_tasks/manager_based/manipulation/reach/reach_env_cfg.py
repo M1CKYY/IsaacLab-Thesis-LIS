@@ -103,7 +103,7 @@ class ObservationsCfg:
         joint_vel = ObsTerm(func=mdp.joint_vel)
         #goal_direction = ObsTerm(func=mdp.goal_direction, params={"command_name": "ee_pose"})
         pose_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "ee_pose"})
-        ee_orientation = ObsTerm(func=mdp.orientation_error, params={"command_name": "ee_pose"})
+        #ee_orientation = ObsTerm(func=mdp.orientation_error, params={"command_name": "ee_pose"})
         #actions = ObsTerm(func=mdp.last_action)
         #goal_distance = ObsTerm(func=mdp.goal_dist, params={"command_name": "ee_pose"})
 

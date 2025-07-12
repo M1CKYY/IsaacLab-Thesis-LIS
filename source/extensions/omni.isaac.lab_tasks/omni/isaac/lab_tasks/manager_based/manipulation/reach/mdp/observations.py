@@ -48,24 +48,9 @@ def goal_direction(
     distance = des_pos_w - ee_w
     return distance
 
-def goal_direction(
-    env: ManagerBasedRLEnv,
-    command_name: str,
-    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
-    ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame")
-) -> torch.Tensor:
-    """Reward the agent for tracking the goal pose using tanh-kernel."""
-    robot: RigidObject = env.scene[robot_cfg.name]
-    ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
-    ee_w = ee_frame.data.target_pos_w[..., 0, :]
 
-    command = env.command_manager.get_command(command_name)
-    des_pos_b = command[:, :3]
-    des_pos_w, _ = combine_frame_transforms(robot.data.root_pos_w, robot.data.root_quat_w, des_pos_b)
-    distance = des_pos_w - ee_w
-    return distance
 
-def orientation_error(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+def orientation_error(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Penalize tracking orientation error using shortest path.
 
     The function computes the orientation error between the desired orientation (from the command) and the
@@ -78,5 +63,6 @@ def orientation_error(env: ManagerBasedRLEnv, command_name: str, asset_cfg: Scen
     # obtain the desired and current orientations
     des_quat_b = command[:, 3:7]
     des_quat_w = quat_mul(asset.data.root_state_w[:, 3:7], des_quat_b)
-    curr_quat_w = asset.data.body_state_w[:, asset_cfg.body_ids[0], 3:7]  # type: ignore
-    return quat_error_magnitude(curr_quat_w, des_quat_w)
+
+    curr_quat_w = asset.data.body_state_w[:, -1, 3:7]  # type: ignore
+    return quat_error_magnitude(curr_quat_w, des_quat_w).reshape(-1, 1)
