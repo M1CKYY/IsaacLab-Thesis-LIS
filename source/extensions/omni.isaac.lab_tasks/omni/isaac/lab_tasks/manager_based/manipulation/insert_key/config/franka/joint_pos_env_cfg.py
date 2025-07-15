@@ -17,6 +17,8 @@ from omni.isaac.lab_tasks.manager_based.manipulation.insert_key import mdp
 from omni.isaac.lab_tasks.manager_based.manipulation.insert_key.insert_key_env_cfg import InsertKeyEnvCfg
 from omni.isaac.lab_assets.franka import FRANKA_PANDA_CFG  # isort: skip
 from omni.isaac.lab.assets import ArticulationCfg, AssetBaseCfg, DeformableObjectCfg, RigidObjectCfg
+from omni.isaac.lab.sensors import FrameTransformer
+from omni.isaac.lab.sensors.frame_transformer.frame_transformer_cfg import FrameTransformerCfg, OffsetCfg
 
 ##
 # Pre-defined configs
@@ -29,6 +31,8 @@ FRAME_MARKER_SMALL_CFG.markers["frame"].scale = (0.10, 0.10, 0.10)
 
 @configclass
 class FrankaInsertKeyEnvCfg(InsertKeyEnvCfg):
+
+
 
     def __post_init__(self):
         # post init of parent
@@ -72,33 +76,33 @@ class FrankaInsertKeyEnvCfg(InsertKeyEnvCfg):
             ),
         )
 
-        key_long_part_frame = FrameTransformerCfg(
-            prim_path="{ENV_REGEX_NS}/Key/handle",
-            debug_vis=False,
-            target_frames=[
-                FrameTransformerCfg.FrameCfg(
-                    prim_path="{ENV_REGEX_NS}/Key/long_part",
-                    name="key_long_part_frame",
-                    offset=OffsetCfg(
-                        pos=(0.0, 0.0, 0.046),
-                    ),
-                ),
-            ],
-        )
-
-        key_head_frame = FrameTransformerCfg(
-            prim_path="{ENV_REGEX_NS}/Key/handle",
-            debug_vis=False,
-            target_frames=[
-                FrameTransformerCfg.FrameCfg(
-                    prim_path="{ENV_REGEX_NS}/Key/head",
-                    name="key_head_frame",
-                    offset=OffsetCfg(
-                        pos=(-0.028, -0.18, 0),
-                    ),
-                ),
-            ],
-        )
+        # key_long_part_frame = FrameTransformerCfg(
+        #     prim_path="{ENV_REGEX_NS}/Key/handle",
+        #     debug_vis=False,
+        #     target_frames=[
+        #         FrameTransformerCfg.FrameCfg(
+        #             prim_path="{ENV_REGEX_NS}/Key/long_part",
+        #             name="key_long_part_frame",
+        #             offset=OffsetCfg(
+        #                 pos=(0.0, 0.0, 0.046),
+        #             ),
+        #         ),
+        #     ],
+        # )
+        #
+        # key_head_frame = FrameTransformerCfg(
+        #     prim_path="{ENV_REGEX_NS}/Key/handle",
+        #     debug_vis=False,
+        #     target_frames=[
+        #         FrameTransformerCfg.FrameCfg(
+        #             prim_path="{ENV_REGEX_NS}/Key/head",
+        #             name="key_head_frame",
+        #             offset=OffsetCfg(
+        #                 pos=(-0.028, -0.18, 0),
+        #             ),
+        #         ),
+        #     ],
+        # )
 
         self.scene.key = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Key",
@@ -116,11 +120,7 @@ class FrankaInsertKeyEnvCfg(InsertKeyEnvCfg):
                     disable_gravity=False,
                 ),
             ),
-            extensions=[key_long_part_frame, key_head_frame]
         )
-
-
-
 
         self.scene.box = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Box",
@@ -139,7 +139,6 @@ class FrankaInsertKeyEnvCfg(InsertKeyEnvCfg):
                 ),
             ),
         )
-
 
         self.scene.ee_frame = FrameTransformerCfg(
             prim_path="{ENV_REGEX_NS}/Robot/panda_link0",
@@ -168,58 +167,12 @@ class FrankaInsertKeyEnvCfg(InsertKeyEnvCfg):
                 ),
             ],
         )
-
+        print(self.scene.ee_frame.target_frames)
 
 
         # override rewards
-        self.rewards.grasp_key.params["open_joint_pos"] = 0.04
-        self.rewards.grasp_key.params["asset_cfg"].joint_names = ["panda_finger_.*"]
-
-    def _setup_scene(self):
-        # First, call the parent method to let it build the standard scene
-        # This is the step that will spawn your "Key" object from the Cfg
-        super()._setup_scene()
-
-        # -- Key Long Part Frame
-        # Now that the scene is set up, programmatically create the FrameTransformer
-        key_long_part_cfg = FrameTransformerCfg(
-            prim_path=f"{self.scene.env_ns[0]}/Key/handle",
-            target_frames=[
-                FrameTransformerCfg(
-                    prim_path=f"{self.scene.env_ns[0]}/Key/long_part",
-                    name="key_long_part_frame",
-                    offset=OffsetCfg(pos=(0.0, 0.0, 0.046)),
-                ),
-            ],
-        )
-        # Create the instance and attach it to the scene object
-        self.scene.key_long_part_frame = FrameTransformerCfg(cfg=key_long_part_cfg)
-
-        # -- Key Head Frame
-        key_head_frame_cfg = FrameTransformerCfg(
-            prim_path=f"{self.scene.env_ns[0]}/Key/handle",
-            target_frames=[
-                FrameTransformerCfg_FrameCfg(
-                    prim_path=f"{self.scene.env_ns[0]}/Key/head",
-                    name="key_head_frame",
-                    offset=OffsetCfg(pos=(-0.028, -0.18, 0)),
-                ),
-            ],
-        )
-        # Create the instance and attach it to the scene object
-        self.scene.key_head_frame = FrameTransformer(cfg=key_head_frame_cfg)
-
-    # ... other environment methods like _reset, _step, etc.
-    def _post_reset(self):
-        # IMPORTANT: You must update your new sensors at reset
-        self.scene.key_long_part_frame.reset()
-        self.scene.key_head_frame.reset()
-        # ... rest of your reset logic
-
-    def _step_impl(self, actions):
-        # IMPORTANT: And also update them every step
-        self.scene.key_long_part_frame.update(self.sim.get_physics_dt())
-        self.scene.key_head_frame.update(self.sim.get_physics_dt())
+        # self.rewards.grasp_key.params["open_joint_pos"] = 0.04
+        # self.rewards.grasp_key.params["asset_cfg"].joint_names = ["panda_finger_.*"]
 
 @configclass
 class FrankaInsertKeyEnvCfg_PLAY(FrankaInsertKeyEnvCfg):

@@ -101,6 +101,7 @@ class ObservationsCfg:
         # observation terms (order preserved)
         joint_pos = ObsTerm(func=mdp.joint_pos)
         joint_vel = ObsTerm(func=mdp.joint_vel)
+        ee_posiition = ObsTerm(func=mdp.ee_position)
         #goal_direction = ObsTerm(func=mdp.goal_direction, params={"command_name": "ee_pose"})
         pose_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "ee_pose"})
         #ee_orientation = ObsTerm(func=mdp.orientation_error, params={"command_name": "ee_pose"})
@@ -139,11 +140,20 @@ class RewardsCfg:
        weight=-0.2,
        params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
     )
+
     end_effector_position_tracking_fine_grained = RewTerm(
         func=mdp.position_command_error_tanh,
         weight=0.1,
         params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "std": 0.1, "command_name": "ee_pose"},
     )
+
+    # end_effector_position_tracking_fine_grained_exp = RewTerm(
+    #     func=mdp.position_command_error_exp,
+    #     weight=0.1,
+    #     params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "std": 0.1, "command_name": "ee_pose"},
+    # )
+
+    #orientation
     end_effector_orientation_tracking = RewTerm(
         func=mdp.orientation_command_error,
         weight=-0.1,

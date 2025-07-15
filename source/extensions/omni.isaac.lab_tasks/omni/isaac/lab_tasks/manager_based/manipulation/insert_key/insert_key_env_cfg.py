@@ -16,7 +16,7 @@ from omni.isaac.lab.managers import RewardTermCfg as RewTerm
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
 from omni.isaac.lab.scene import InteractiveSceneCfg
-from omni.isaac.lab.sensors.frame_transformer.frame_transformer_cfg import FrameTransformerCfg, OffsetCfg
+from omni.isaac.lab.sensors.frame_transformer.frame_transformer_cfg import FrameTransformerCfg, OffsetCfg, FrameTransformer
 from omni.isaac.lab.sim.spawners.from_files.from_files_cfg import GroundPlaneCfg, UsdFileCfg
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.assets import ISAAC_NUCLEUS_DIR
@@ -45,8 +45,6 @@ class InsertKeySceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = MISSING
     # # end-effector sensor: will be populated by agent env cfg
     ee_frame: FrameTransformerCfg = MISSING
-    key_head_frame: FrameTransformerCfg = MISSING
-    key_long_part_frame: FrameTransformerCfg = MISSING
     # # target object: will be populated by agent env cfg
     box: RigidObjectCfg | DeformableObjectCfg = MISSING
     #cube2: RigidObjectCfg | DeformableObjectCfg = MISSING
@@ -149,30 +147,30 @@ class RewardsCfg:
     """Reward terms for the MDP."""
     ee_key_dist = RewTerm(func=mdp.distance, params={"std": 0.1, "object1_cfg": SceneEntityCfg("key"), "object2_cfg": SceneEntityCfg("ee_frame")}, weight=2.0)
 
-    grasp_key = RewTerm(
-        func=mdp.grasp_key,
-        weight=0.5,
-        params={
-            "threshold": 0.03,
-            "open_joint_pos": MISSING,
-            "asset_cfg": SceneEntityCfg("robot", joint_names=MISSING),
-        },
-    )
-
-    key_to_box_height = RewTerm(
-        func=mdp.key_to_box_height,
-        params={"std": 0.3},
-        weight=1.5,
-    )
-
-    align_head_box_inserting = RewTerm(
-        func=mdp.align_head_box_inserting,
-        weight=1.5,
-    )
-
-
-    key_box_dist = RewTerm(func=mdp.distance2, params={"std": 0.1, "object1_cfg": SceneEntityCfg("box"),
-                                                         "object2_cfg": SceneEntityCfg("key_head_frame")}, weight=2.0)
+    # grasp_key = RewTerm(
+    #     func=mdp.grasp_key,
+    #     weight=0.5,
+    #     params={
+    #         "threshold": 0.03,
+    #         "open_joint_pos": MISSING,
+    #         "asset_cfg": SceneEntityCfg("robot", joint_names=MISSING),
+    #     },
+    # )
+    #
+    # key_to_box_height = RewTerm(
+    #     func=mdp.key_to_box_height,
+    #     params={"std": 0.3},
+    #     weight=1.5,
+    # )
+    #
+    # align_head_box_inserting = RewTerm(
+    #     func=mdp.align_head_box_inserting,
+    #     weight=1.5,
+    # )
+    #
+    #
+    # key_box_dist = RewTerm(func=mdp.distance2, params={"std": 0.1, "object1_cfg": SceneEntityCfg("box"),
+    #                                                      "object2_cfg": SceneEntityCfg("key_head_frame")}, weight=2.0)
 
 
     #
@@ -183,11 +181,6 @@ class RewardsCfg:
     # )
 
     #align_ee_handle = RewTerm(func=mdp.align_ee_handle, weight=0.5)
-
-
-
-
-
 
 
     key_fail = RewTerm(
@@ -227,6 +220,7 @@ class InsertKeyEnvCfg(ManagerBasedRLEnvCfg):
     terminations: TerminationsCfg = TerminationsCfg()
     events: EventCfg = EventCfg()
 
+
     def __post_init__(self):
         """Post initialization."""
         # general settings
@@ -240,3 +234,5 @@ class InsertKeyEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
         self.sim.physx.gpu_total_aggregate_pairs_capacity = 16 * 1024
         self.sim.physx.friction_correlation_distance = 0.00625
+
+

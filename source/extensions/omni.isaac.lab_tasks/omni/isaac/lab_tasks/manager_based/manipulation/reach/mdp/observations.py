@@ -48,7 +48,14 @@ def goal_direction(
     distance = des_pos_w - ee_w
     return distance
 
-
+def ee_position(
+    env: ManagerBasedRLEnv,
+    ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"),
+) -> torch.Tensor:
+    # extract the used quantities (to enable type-hinting)
+    ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
+    ee_w = ee_frame.data.target_pos_w[..., 0, :]
+    return ee_w
 
 def orientation_error(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Penalize tracking orientation error using shortest path.
