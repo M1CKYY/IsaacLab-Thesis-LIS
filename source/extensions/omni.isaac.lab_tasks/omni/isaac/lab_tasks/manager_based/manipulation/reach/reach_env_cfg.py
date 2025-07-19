@@ -86,7 +86,7 @@ class CommandsCfg:
 class ActionsCfg:
     """Action specifications for the MDP."""
 
-    arm_action: mdp.JointPositionActionCfg | mdp.JointVelocityActionCfg | mdp.JointEffortActionCfg | mdp.DifferentialInverseKinematicsActionCfg = MISSING
+    arm_action: mdp.RelativeJointPositionActionCfg | mdp.JointPositionActionCfg | mdp.JointVelocityActionCfg | mdp.JointEffortActionCfg | mdp.DifferentialInverseKinematicsActionCfg | mdp.OperationalSpaceControllerActionCfg = MISSING
     gripper_action: mdp.BinaryJointPositionActionCfg = None
 
 
@@ -101,7 +101,11 @@ class ObservationsCfg:
         # observation terms (order preserved)
         joint_pos = ObsTerm(func=mdp.joint_pos)
         joint_vel = ObsTerm(func=mdp.joint_vel)
-        ee_posiition = ObsTerm(func=mdp.ee_position)
+        #force_and_wench = ObsTerm(func=mdp.body_incoming_wrench, params={"asset_cfg": SceneEntityCfg("robot")},
+        #                                                                 clip=(-10.0,10.0))
+        #gravity = ObsTerm(func=mdp.projected_gravity)
+
+        #ee_posiition = ObsTerm(func=mdp.ee_position)
         #goal_direction = ObsTerm(func=mdp.goal_direction, params={"command_name": "ee_pose"})
         pose_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "ee_pose"})
         #ee_orientation = ObsTerm(func=mdp.orientation_error, params={"command_name": "ee_pose"})
@@ -137,13 +141,49 @@ class RewardsCfg:
     # task terms
     end_effector_position_tracking = RewTerm(
        func=mdp.position_command_error,
-       weight=-0.2,
+       weight=-4,
        params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
     )
+    # sparse_end_effector_position_tracking = RewTerm(
+    #    func=mdp.sparse_position_command_error,
+    #    weight=0.2,
+    #    params={"thresh": 0.2, "asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+    # )
+    #
+    # sparse_end_effector_position_tracking_fine1 = RewTerm(
+    #     func=mdp.sparse_position_command_error,
+    #     weight=0.1,
+    #     params={"thresh": 0.15, "asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+    # )
+    #
+    # sparse_end_effector_position_tracking_fine2 = RewTerm(
+    #     func=mdp.sparse_position_command_error,
+    #     weight=0.1,
+    #     params={"thresh": 0.10, "asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+    # )
+    #
+    # sparse_end_effector_orientation_tracking = RewTerm(
+    #     func=mdp.sparse_orientation_command_error,
+    #     weight=0.2,
+    #     params={"thresh": 1.25, "asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+    # )
+    #
+    # sparse_end_effector_orientation_tracking_fine1 = RewTerm(
+    #     func=mdp.sparse_orientation_command_error,
+    #     weight=0.1,
+    #     params={"thresh": 0.5, "asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+    # )
+    #
+    # sparse_end_effector_orientation_tracking_fine2 = RewTerm(
+    #     func=mdp.sparse_orientation_command_error,
+    #     weight=0.1,
+    #     params={"thresh": 0.25, "asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+    # )
+
 
     end_effector_position_tracking_fine_grained = RewTerm(
         func=mdp.position_command_error_tanh,
-        weight=0.1,
+        weight=2,
         params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "std": 0.1, "command_name": "ee_pose"},
     )
 
@@ -153,10 +193,12 @@ class RewardsCfg:
     #     params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "std": 0.1, "command_name": "ee_pose"},
     # )
 
+
+
     #orientation
     end_effector_orientation_tracking = RewTerm(
         func=mdp.orientation_command_error,
-        weight=-0.1,
+        weight=-2,
         params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
     )
 
