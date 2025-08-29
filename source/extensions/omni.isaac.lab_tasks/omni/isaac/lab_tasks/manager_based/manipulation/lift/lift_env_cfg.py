@@ -88,7 +88,7 @@ class ActionsCfg:
     """Action specifications for the MDP."""
 
     # will be set by agent env cfg
-    arm_action: mdp.JointPositionActionCfg | mdp.DifferentialInverseKinematicsActionCfg = MISSING
+    arm_action: mdp.JointPositionActionCfg | mdp.DifferentialInverseKinematicsActionCfg | mdp.OperationalSpaceControllerActionCfg = MISSING
     gripper_action: mdp.BinaryJointPositionActionCfg = MISSING
 
 
@@ -103,8 +103,12 @@ class ObservationsCfg:
         joint_pos = ObsTerm(func=mdp.joint_pos_rel)
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
         object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
+        #distance = ObsTerm(func=mdp.object_ee_dist)
+        #goal_distance = ObsTerm(func=mdp.object_goal_dist, params={"command_name": "object_pose"})
         target_object_position = ObsTerm(func=mdp.generated_commands, params={"command_name": "object_pose"})
-        actions = ObsTerm(func=mdp.last_action)
+        #actions = ObsTerm(func=mdp.last_action)
+        #is_lifted = ObsTerm(func=mdp.is_lifted, history_length=1, params={"minimal_height": 0.1})
+
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -131,34 +135,6 @@ class EventCfg:
     )
 
 
-@configclass
-class RewardsCfg:
-    """Reward terms for the MDP."""
-
-    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1}, weight=1.0)
-
-    lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.04}, weight=15.0)
-
-    object_goal_tracking = RewTerm(
-        func=mdp.object_goal_distance,
-        params={"std": 0.3, "minimal_height": 0.04, "command_name": "object_pose"},
-        weight=16.0,
-    )
-
-    object_goal_tracking_fine_grained = RewTerm(
-        func=mdp.object_goal_distance,
-        params={"std": 0.05, "minimal_height": 0.04, "command_name": "object_pose"},
-        weight=5.0,
-    )
-
-    # action penalty
-    action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
-
-    joint_vel = RewTerm(
-        func=mdp.joint_vel_l2,
-        weight=-1e-4,
-        params={"asset_cfg": SceneEntityCfg("robot")},
-    )
 
 
 @configclass
@@ -172,16 +148,63 @@ class TerminationsCfg:
     )
 
 
-@configclass
-class CurriculumCfg:
-    """Curriculum terms for the MDP."""
 
-    action_rate = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -1e-1, "num_steps": 10000}
+
+@configclass
+class RewardsCfg:
+    """Reward terms for the MDP."""
+
+    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.3}, weight=5.0)
+
+    object_lifted = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.04}, weight=5.0)
+    close_gripper_near_object = RewTerm(func=mdp.close_gripper_near_object, params={"minimal_height": 0.019, "gripper_action_name": "gripper_action", "std": 0.3}, weight=3)
+    #penalize_letting_go_of_lifted_object = RewTerm(func=mdp.penalize_letting_go_of_lifted_object, params={"gripper_action_name": "gripper_action"}, weight=20.0)
+
+    object_z_lin_vel = RewTerm(func=mdp.scaled_lin_vel, params={"asset_cfg": SceneEntityCfg("object"), "command_name": "object_pose", "std": 0.3, "std_2": 0.1}, weight=1.0)
+    gripping = RewTerm(
+        func=mdp.fingers_to_object_distance,
+        weight=1.0,
+        params={"alpha": 200}
     )
 
-    joint_vel = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "joint_vel", "weight": -1e-1, "num_steps": 10000}
+    object_goal_tracking = RewTerm(
+        func=mdp.object_goal_distance,
+        params={"std": 0.3, "minimal_height": 0.04, "command_name": "object_pose"},
+        weight=20.0,
+    )
+
+    object_goal_tracking_fine_grained = RewTerm(
+        func=mdp.object_goal_distance,
+        params={"std": 0.2, "minimal_height": 0.04, "command_name": "object_pose"},
+        weight=40.0,
+    )
+    object_goal_tracking_fine_grained_2 = RewTerm(
+        func=mdp.object_goal_distance,
+        params={"std": 0.1, "minimal_height": 0.04, "command_name": "object_pose"},
+        weight=50.0,
+    )
+    #reaching_goal = RewTerm(func=mdp.object_distance_to_goal_reward, params={"command_name": "object_pose", "distance_std": 2.0}, weight=3.0)
+
+    #velocity_goal = RewTerm(func=mdp.object_velocity_towards_goal_reward, params={"command_name": "object_pose"}, weight=3.0)
+
+    #encourage = RewTerm(func=mdp.encourage_lift_sequence, params={"ee_body_name": "panda_hand"}, weight=5.0)
+
+    #placing_object = RewTerm(func=mdp.stay_low, params={"minimal_height": 0.2}, weight=5.0)
+
+    #reach_base = RewTerm(func=mdp.ee_base_distance, params={"std": 0.1}, weight=2.0)
+
+
+    #ee_object_z_axis_alignment = RewTerm(func=mdp.ee_object_z_axis_alignment, weight=3.0)
+
+
+
+    # action penalty
+    action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
+
+    joint_vel = RewTerm(
+        func=mdp.joint_vel_l2,
+        weight=-1e-4,
+        params={"asset_cfg": SceneEntityCfg("robot")},
     )
 
 
@@ -195,7 +218,8 @@ class LiftEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the lifting environment."""
 
     # Scene settings
-    scene: ObjectTableSceneCfg = ObjectTableSceneCfg(num_envs=4096, env_spacing=2.5)
+    scene: ObjectTableSceneCfg = ObjectTableSceneCfg(env_spacing=2.5)
+
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
@@ -204,7 +228,7 @@ class LiftEnvCfg(ManagerBasedRLEnvCfg):
     rewards: RewardsCfg = RewardsCfg()
     terminations: TerminationsCfg = TerminationsCfg()
     events: EventCfg = EventCfg()
-    curriculum: CurriculumCfg = CurriculumCfg()
+    #curriculum: CurriculumCfg = CurriculumCfg()
 
     def __post_init__(self):
         """Post initialization."""

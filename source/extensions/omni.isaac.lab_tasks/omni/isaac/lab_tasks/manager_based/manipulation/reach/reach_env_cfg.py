@@ -21,7 +21,7 @@ from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.assets import ISAAC_NUCLEUS_DIR
 from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
-import omni.isaac.lab_tasks.manager_based.manipulation.reach.mdp as mdp
+from . import mdp
 
 ##
 # Scene definition
@@ -86,8 +86,8 @@ class CommandsCfg:
 class ActionsCfg:
     """Action specifications for the MDP."""
 
-    arm_action: ActionTerm = MISSING
-    gripper_action: ActionTerm | None = None
+    arm_action: mdp.RelativeJointPositionActionCfg | mdp.JointPositionActionCfg | mdp.JointVelocityActionCfg | mdp.JointEffortActionCfg | mdp.DifferentialInverseKinematicsActionCfg | mdp.OperationalSpaceControllerActionCfg = MISSING
+    gripper_action: mdp.BinaryJointPositionActionCfg = None
 
 
 @configclass
@@ -99,10 +99,18 @@ class ObservationsCfg:
         """Observations for policy group."""
 
         # observation terms (order preserved)
-        joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
+        joint_pos = ObsTerm(func=mdp.joint_pos)
+        joint_vel = ObsTerm(func=mdp.joint_vel)
+        #force_and_wench = ObsTerm(func=mdp.body_incoming_wrench, params={"asset_cfg": SceneEntityCfg("robot")},
+        #                                                                 clip=(-10.0,10.0))
+        #gravity = ObsTerm(func=mdp.projected_gravity)
+
+        #ee_posiition = ObsTerm(func=mdp.ee_position)
+        #goal_direction = ObsTerm(func=mdp.goal_direction, params={"command_name": "ee_pose"})
         pose_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "ee_pose"})
-        actions = ObsTerm(func=mdp.last_action)
+        #ee_orientation = ObsTerm(func=mdp.orientation_error, params={"command_name": "ee_pose"})
+        #actions = ObsTerm(func=mdp.last_action)
+        #goal_distance = ObsTerm(func=mdp.goal_dist, params={"command_name": "ee_pose"})
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -132,18 +140,65 @@ class RewardsCfg:
 
     # task terms
     end_effector_position_tracking = RewTerm(
-        func=mdp.position_command_error,
-        weight=-0.2,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+       func=mdp.position_command_error,
+       weight=-4,
+       params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
     )
+    # sparse_end_effector_position_tracking = RewTerm(
+    #    func=mdp.sparse_position_command_error,
+    #    weight=0.2,
+    #    params={"thresh": 0.2, "asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+    # )
+    #
+    # sparse_end_effector_position_tracking_fine1 = RewTerm(
+    #     func=mdp.sparse_position_command_error,
+    #     weight=0.1,
+    #     params={"thresh": 0.15, "asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+    # )
+    #
+    # sparse_end_effector_position_tracking_fine2 = RewTerm(
+    #     func=mdp.sparse_position_command_error,
+    #     weight=0.1,
+    #     params={"thresh": 0.10, "asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+    # )
+    #
+    # sparse_end_effector_orientation_tracking = RewTerm(
+    #     func=mdp.sparse_orientation_command_error,
+    #     weight=0.2,
+    #     params={"thresh": 1.25, "asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+    # )
+    #
+    # sparse_end_effector_orientation_tracking_fine1 = RewTerm(
+    #     func=mdp.sparse_orientation_command_error,
+    #     weight=0.1,
+    #     params={"thresh": 0.5, "asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+    # )
+    #
+    # sparse_end_effector_orientation_tracking_fine2 = RewTerm(
+    #     func=mdp.sparse_orientation_command_error,
+    #     weight=0.1,
+    #     params={"thresh": 0.25, "asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+    # )
+
+
     end_effector_position_tracking_fine_grained = RewTerm(
         func=mdp.position_command_error_tanh,
-        weight=0.1,
+        weight=2,
         params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "std": 0.1, "command_name": "ee_pose"},
     )
+
+    # end_effector_position_tracking_fine_grained_exp = RewTerm(
+    #     func=mdp.position_command_error_exp,
+    #     weight=0.1,
+    #     params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "std": 0.1, "command_name": "ee_pose"},
+    # )
+
+
+
+    #orientation
     end_effector_orientation_tracking = RewTerm(
         func=mdp.orientation_command_error,
-        weight=-0.1,
+        weight=-2,
         params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
     )
 
@@ -163,17 +218,17 @@ class TerminationsCfg:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
 
-@configclass
-class CurriculumCfg:
-    """Curriculum terms for the MDP."""
-
-    action_rate = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -0.005, "num_steps": 4500}
-    )
-
-    joint_vel = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "joint_vel", "weight": -0.001, "num_steps": 4500}
-    )
+# @configclass
+# class CurriculumCfg:
+#     """Curriculum terms for the MDP."""
+#
+#     action_rate = CurrTerm(
+#         func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -0.005, "num_steps": 4500}
+#     )
+#
+#     joint_vel = CurrTerm(
+#         func=mdp.modify_reward_weight, params={"term_name": "joint_vel", "weight": -0.001, "num_steps": 4500}
+#     )
 
 
 ##
@@ -195,7 +250,7 @@ class ReachEnvCfg(ManagerBasedRLEnvCfg):
     rewards: RewardsCfg = RewardsCfg()
     terminations: TerminationsCfg = TerminationsCfg()
     events: EventCfg = EventCfg()
-    curriculum: CurriculumCfg = CurriculumCfg()
+    #curriculum: CurriculumCfg = CurriculumCfg()
 
     def __post_init__(self):
         """Post initialization."""

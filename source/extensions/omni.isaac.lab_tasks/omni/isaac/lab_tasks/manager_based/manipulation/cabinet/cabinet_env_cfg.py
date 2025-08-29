@@ -51,7 +51,6 @@ class CabinetSceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = MISSING
     # End-effector, Will be populated by agent env cfg
     ee_frame: FrameTransformerCfg = MISSING
-
     cabinet = ArticulationCfg(
         prim_path="{ENV_REGEX_NS}/Cabinet",
         spawn=sim_utils.UsdFileCfg(

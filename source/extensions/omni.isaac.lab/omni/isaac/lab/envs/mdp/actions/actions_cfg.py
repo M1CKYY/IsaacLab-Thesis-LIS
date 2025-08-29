@@ -125,6 +125,7 @@ class JointPositionToLimitsActionCfg(ActionTermCfg):
     """
 
 
+
 @configclass
 class EMAJointPositionToLimitsActionCfg(JointPositionToLimitsActionCfg):
     """Configuration for the exponential moving average (EMA) joint position action term.

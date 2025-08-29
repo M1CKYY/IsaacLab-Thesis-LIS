@@ -198,6 +198,7 @@ class CommandTerm(ManagerTermBase):
     @abstractmethod
     def _resample_command(self, env_ids: Sequence[int]):
         """Resample the command for the specified environments."""
+        print("HELLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOoo")
         raise NotImplementedError
 
     @abstractmethod

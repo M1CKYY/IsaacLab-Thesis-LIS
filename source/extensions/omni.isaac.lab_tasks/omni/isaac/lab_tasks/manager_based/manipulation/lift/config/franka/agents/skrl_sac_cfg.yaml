@@ -1,0 +1,112 @@
+# ===================================================================
+# skrl: Soft Actor-Critic (SAC) Configuration for Isaac Lab
+# ===================================================================
+# This configuration is converted from the provided PPO setup.
+# Key differences for SAC (Off-Policy):
+#   - Models: Uses an Actor and two Critic (Q-function) networks.
+#   - Memory: Uses a large replay buffer for uncorrelated experience sampling.
+#   - Agent: Uses a different set of hyperparameters (e.g., polyak, batch_size).
+# ===================================================================
+
+seed: 42
+
+# ===================================================================
+# Models for Soft Actor-Critic (SAC)
+#
+# SAC requires 3 models:
+#   - A stochastic policy (actor) to explore actions.
+#   - Two deterministic critics (Q-functions) to mitigate overestimation bias.
+# ===================================================================
+models:
+  # The policy (actor) remains a Gaussian model to output a stochastic action.
+  # Network layers are slightly larger, which often helps with SAC's stability.
+  policy:
+    class: GaussianMixin
+    clip_actions: False
+    clip_log_std: True
+    min_log_std: -20.0
+    max_log_std: 2.0
+    initial_log_std: 0.0
+    network:
+      - name: net
+        input: STATES
+        layers: [64, 64]
+        activations: relu
+    output: ACTIONS
+
+  # The 'value' model is replaced by two 'critic' models.
+  # Critics take both STATES and ACTIONS as input to estimate the Q-value.
+  critic_1:
+    class: DeterministicMixin
+    clip_actions: False
+    network:
+      - name: net
+        input: [STATES, ACTIONS]
+        layers: [64, 64]
+        activations: relu
+    output: ONE
+
+  critic_2:
+    class: DeterministicMixin
+    clip_actions: False
+    network:
+      - name: net
+        input: [STATES, ACTIONS]
+        layers: [64, 64]
+        activations: relu
+    output: ONE
+
+
+# ===================================================================
+# Replay Memory for Off-Policy Learning
+#
+# SAC uses a large replay buffer to sample random batches of past experiences.
+# ===================================================================
+memory:
+  class: RandomMemory
+  memory_size: 1000000  # Size of the replay buffer (e.g., 1 million transitions)
+
+
+# ===================================================================
+# SAC agent configuration (replaces PPO configuration)
+# https://skrl.readthedocs.io/en/latest/api/agents/sac.html
+# ===================================================================
+agent:
+  class: skrl.agents.torch.sac.SAC
+  # --- Learning Hyperparameters ---
+  discount_factor: 0.99
+  polyak: 0.005
+  batch_size: 512                   # Number of samples from memory to train on each update
+  actor_learning_rate: 1.0e-3
+  critic_learning_rate: 1.0e-3
+
+  # --- Entropy (Temperature) Tuning ---
+  learn_entropy: True               # Enable automatic tuning of the temperature parameter (alpha)
+  entropy_learning_rate: 1.0e-3     # Learning rate for the temperature parameter
+  initial_entropy: 0.2              # Initial value for the temperature parameter
+  target_entropy: None            # Target entropy. 'auto' defaults to -dim(action_space)
+
+  # --- Preprocessing (State preprocessor is often still useful) ---
+  state_preprocessor: RunningStandardScaler
+  state_preprocessor_kwargs: null
+
+  # --- Timesteps and Exploration ---
+  # Collect a buffer of random experiences before starting to learn
+  random_timesteps: 5000
+  learning_starts: 5000
+
+  # --- Logging and Checkpoint (Updated directory name) ---
+  experiment:
+    directory: "reach_franka_sac"
+    experiment_name: ""
+    write_interval: auto
+    checkpoint_interval: auto
+
+
+# ===================================================================
+# Sequential trainer (this section remains the same)
+# ===================================================================
+trainer:
+  class: SequentialTrainer
+  timesteps: 24000
+  environment_info: log

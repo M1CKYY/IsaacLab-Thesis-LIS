@@ -105,7 +105,6 @@ class FrameTransformer(SensorBase):
 
     def _initialize_impl(self):
         super()._initialize_impl()
-
         # resolve source frame offset
         source_frame_offset_pos = torch.tensor(self.cfg.source_frame_offset.pos, device=self.device)
         source_frame_offset_quat = torch.tensor(self.cfg.source_frame_offset.rot, device=self.device)
@@ -215,7 +214,9 @@ class FrameTransformer(SensorBase):
         self._physics_sim_view.set_subspace_roots("/")
         # Create a prim view for all frames and initialize it
         # order of transforms coming out of view will be source frame followed by target frame(s)
+        print(body_names_regex)
         self._frame_physx_view = self._physics_sim_view.create_rigid_body_view(body_names_regex)
+        print(self._frame_physx_view)
 
         # Determine the order in which regex evaluated body names so we can later index into frame transforms
         # by frame name correctly

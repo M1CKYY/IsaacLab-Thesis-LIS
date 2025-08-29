@@ -1,0 +1,82 @@
+params:
+  # Seeding for reproducibility
+  seed: 42
+
+  # environment wrapper clipping
+  env:
+    clip_observations: 100.0
+    clip_actions: 100.0
+  # Algorithm and Model Selection
+  algo:
+    name: sac
+  model:
+    name: soft_actor_critic
+
+  # Network Architecture for Actor and Critic
+  network:
+    name: soft_actor_critic
+    separate: True  # Use separate networks for actor and critic for stability
+    space:
+      observation:
+        input_name: 'obs'
+      actions:  # <--- Add this level
+        continuous:  # <--- Indent this block
+          mu_activation: 'None'
+          sigma_activation: 'None'
+          mu_init:
+            name: 'default'
+          sigma_init:
+            name: 'const_initializer'
+            val: 0
+
+    # Shared MLP (Multi-Layer Perceptron) structure
+    mlp:
+      units: [256, 128]              # Hidden layer units for actor and critic networks
+      activation: 'elu'              # Activation function (ELU is common)
+      initializer:
+        name: 'default'
+    log_std_bounds: [ -5, 2 ]
+
+
+  # Main Configuration Block
+  config:
+    player:
+      # This tells the player to use the 'policy' key from the observation dict
+      # before storing it in the replay buffer. This is the main fix.
+      obs_key: 'obs'
+    # Environment and General Settings
+    name: reach_franka_sac
+    env_name: rlgpu                  # Environment name used by rl-games for Isaac Sim
+    device: 'cuda:0'
+    device_name: 'cuda:0'
+    multi_gpu: False
+    normalize_input: True            # Normalize observations
+    reward_shaper:
+      scale_value: 1.0               # Scale reward signal if needed
+
+    # Training Schedule
+    max_epochs: 10000                # Total number of training epochs
+
+    # Checkpoint Settings
+    save_best_after: 200             # Start saving the best model after 200 epochs
+    save_frequency: 500              # Save a checkpoint every 500 epochs
+    score_to_check: 'extrinsic_reward' # Metric to evaluate for 'best' model
+
+    # Core SAC Hyperparameters
+    gamma: 0.99                      # Discount factor for future rewards
+    init_alpha: 1.0                  # Initial value for the temperature parameter (alpha)
+    alpha_lr: 3.e-4                  # Learning rate for optimizing alpha
+    learnable_temperature: True      # Automatically tune alpha
+
+    # Learning Rates and Optimizer Settings
+    actor_lr: 3.e-4                  # Learning rate for the actor network
+    critic_lr: 3.e-4                 # Learning rate for the critic networks
+    lr_schedule: None                # Optional: 'linear' or 'adaptive' learning rate decay
+
+    # Replay Buffer and Batching
+    replay_buffer_size: 1000000       # Maximum number of transitions in the buffer
+    batch_size: 1024                 # Minibatch size sampled from the buffer for training
+    num_warmup_steps: 4096
+    # Soft Update for Target Networks
+    critic_tau: 0.005                # Polyak averaging factor for updating target networks
+                                     # target_weights = tau * local_weights + (1 - tau) * target_weights

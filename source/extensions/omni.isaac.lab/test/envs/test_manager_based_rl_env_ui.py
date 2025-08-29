@@ -96,6 +96,7 @@ class TestManagerBasedRLEnvUI(unittest.TestCase):
         omni.usd.get_context().new_stage()
         # create environment
         env = ManagerBasedRLEnv(cfg=get_empty_base_env_cfg(device=device))
+        print(env.observation_manager.group_obs_term_history_buffer)
         # close the environment
         env.close()
 

@@ -45,16 +45,16 @@ class FrankaReachEnvCfg(joint_pos_env_cfg.FrankaReachEnvCfg):
                 impedance_mode="variable_kp",
                 inertial_dynamics_decoupling=True,
                 partial_inertial_dynamics_decoupling=False,
-                gravity_compensation=False,
+                gravity_compensation=True,
                 motion_stiffness_task=100.0,
                 motion_damping_ratio_task=1.0,
                 motion_stiffness_limits_task=(50.0, 200.0),
                 nullspace_control="position",
             ),
             nullspace_joint_pos_target="center",
-            position_scale=1.0,
-            orientation_scale=1.0,
-            stiffness_scale=100.0,
+            position_scale=0.5,
+            orientation_scale=1,
+            stiffness_scale=50.0,
         )
         # Removing these observations as they are not needed for OSC and we want keep the observation space small
         self.observations.policy.joint_pos = None
